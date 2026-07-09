@@ -10,24 +10,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
 
-    <!-- Firebase SDKs -->
+  <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
+      authDomain: "budget-2d6a0.firebaseapp.com",
+      projectId: "budget-2d6a0",
+      storageBucket: "budget-2d6a0.firebasestorage.app",
+      messagingSenderId: "309980875957",
+      appId: "1:309980875957:web:3c520e284b3ee1745302fc"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-    window.db = db; // Make db accessible globally
+    window.db = db;
+    window.auth = auth;
+    window.provider = provider;
+    window.signInWithPopup = signInWithPopup;
+    window.signOut = signOut;
+    window.onAuthStateChanged = onAuthStateChanged;
   </script>
 
 </head>
@@ -131,10 +139,8 @@
       <p class="eyebrow">Next setup</p>
       <h2>After deployment</h2>
       <ul>
-        <li>Add your Firebase web config in `firebase-config.js`.</li>
         <li>Enable Google sign-in in Firebase Authentication.</li>
         <li>Add your GitHub Pages domain to Firebase authorized domains.</li>
-        <li>Enable GitHub Pages from the repository settings.</li>
       </ul>
     </section>
   </main>
