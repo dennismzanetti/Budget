@@ -5,7 +5,7 @@
  *   initTransactionsPage(uid) — wires up the #transactions page UI
  *
  * Schema (written by import.js):
- *   Collection : users/{uid}/transactions (user-scoped subcollection)
+ *   Collection : transactions (global collection)
  *   Fields     : date (Timestamp), payee (string), amountCents (int),
  *                type ("expense"|"income"), accountId, categoryId,
  *                notes, sourceId, isActive, isCleared, source
@@ -14,7 +14,7 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, updateDoc, deleteDoc,
-  doc, query, orderBy
+  doc, query, orderBy, where
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { populateAccountSelect } from "./accounts.js";
 import { getCategoriesMap } from "./categories.js";
@@ -64,7 +64,6 @@ function categorySelect(currentCategoryId, rowId, catMap) {
 export async function initTransactionsPage(_uid) {
   console.debug("[txn] initTransactionsPage called, uid:", _uid);
 
-  // ── NOTE: The page element ID in HTML is "page-transactions" ─────
   const page = document.getElementById("page-transactions");
   if (!page) { console.warn("[txn] #page-transactions element not found"); return; }
 
@@ -95,11 +94,15 @@ export async function initTransactionsPage(_uid) {
     acctFilter.value = "";
   }
 
-  // ── Account name cache (FIX 1: user-scoped subcollection) ─────────
+  // ── Account name cache (user-scoped subcollection) ─────────────
   let accountMap = {};
+  let userAccountIds = [];
   try {
     const snap = await getDocs(collection(getDb(), "users", _uid, "accounts"));
-    snap.docs.forEach(d => { accountMap[d.id] = d.data().name ?? d.id; });
+    snap.docs.forEach(d => {
+      accountMap[d.id] = d.data().name ?? d.id;
+      userAccountIds.push(d.id);
+    });
     console.debug("[txn] accountMap loaded:", Object.keys(accountMap).length, "accounts", accountMap);
   } catch (e) {
     console.warn("[transactions] could not load account names", e);
@@ -123,24 +126,43 @@ export async function initTransactionsPage(_uid) {
         .join("");
   }
 
-  // ── Load all transactions (FIX 1: user-scoped subcollection) ──────
+  // ── Load all transactions from global collection ───────────────
   let allTxns = [];
 
   async function loadTransactions() {
     tbody.innerHTML = `<tr><td colspan="7" class="txn-loading">Loading\u2026</td></tr>`;
-    console.debug("[txn] loadTransactions — querying users/", _uid, "/transactions");
+    console.debug("[txn] loadTransactions — querying global transactions collection");
+
+    if (userAccountIds.length === 0) {
+      console.warn("[txn] no accounts found for user — cannot load transactions");
+      tbody.innerHTML = `<tr><td colspan="7" class="txn-empty">No accounts found. Please add an account first.</td></tr>`;
+      return;
+    }
+
     try {
-      const txnCol = collection(getDb(), "users", _uid, "transactions");
-      const q = query(txnCol, orderBy("date", "desc"));
-      const snap = await getDocs(q);
-      console.debug("[txn] Firestore snap.size:", snap.size);
-      if (snap.size > 0) {
-        const first = snap.docs[0];
-        console.debug("[txn] first doc id:", first.id, "data:", first.data());
-      } else {
-        console.warn("[txn] snapshot is EMPTY — no documents returned from users/", _uid, "/transactions");
+      const txnCol = collection(getDb(), "transactions");
+      const IN_LIMIT = 30;
+      const allDocs = [];
+
+      // Firestore "in" queries are limited to 30 values; chunk if needed
+      for (let i = 0; i < userAccountIds.length; i += IN_LIMIT) {
+        const chunk = userAccountIds.slice(i, i + IN_LIMIT);
+        const q = query(txnCol, where("accountId", "in", chunk), orderBy("date", "desc"));
+        const snap = await getDocs(q);
+        snap.docs.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
       }
-      allTxns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Sort merged results by date desc
+      allDocs.sort((a, b) => {
+        const da = getDateValue(a.date);
+        const db2 = getDateValue(b.date);
+        if (!da && !db2) return 0;
+        if (!da) return 1;
+        if (!db2) return -1;
+        return db2 - da;
+      });
+
+      allTxns = allDocs;
       console.debug("[txn] allTxns loaded:", allTxns.length);
       renderTable();
     } catch (err) {
@@ -163,13 +185,11 @@ export async function initTransactionsPage(_uid) {
     const filtered = allTxns.filter(t => {
       if (acctVal && t.accountId !== acctVal) return false;
       if (catVal  && t.categoryId !== catVal) return false;
-      // FIX 5: filter by t.type string ("income" / "expense")
       if (typeVal && t.type !== typeVal) return false;
       const d = getDateValue(t.date);
       if (fromVal && d && d < fromVal) return false;
       if (toVal   && d && d > toVal)   return false;
       if (searchVal) {
-        // FIX 2: search payee field; FIX 4: resolve category name via catMap
         const payee   = (t.payee ?? "").toLowerCase();
         const catName = (catMap[t.categoryId]?.name ?? "").toLowerCase();
         const notes   = (t.notes ?? "").toLowerCase();
@@ -184,7 +204,7 @@ export async function initTransactionsPage(_uid) {
       console.debug("[txn] sample allTxns[0]:", JSON.stringify(allTxns[0]));
     }
 
-    // Summary — FIX 3: use amountCents; FIX 5: use t.type string
+    // Summary
     let totalIncomeCents = 0, totalExpenseCents = 0;
     filtered.forEach(t => {
       const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
@@ -200,7 +220,6 @@ export async function initTransactionsPage(_uid) {
       return;
     }
 
-    // FIX 2: display t.payee; FIX 3: centsToDisplay(t.amountCents); FIX 4: categorySelect via catMap; FIX 5: isIncome from t.type
     tbody.innerHTML = filtered.map(t => {
       const isIncome = t.type === "income";
       const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "—");
@@ -226,14 +245,14 @@ export async function initTransactionsPage(_uid) {
         </tr>`;
     }).join("");
 
-    // ── Category inline-save (FIX 1: user-scoped doc path) ───────────
+    // ── Category inline-save (global collection path) ────────────────
     tbody.querySelectorAll(".txn-category-select").forEach(sel => {
       sel.addEventListener("change", async () => {
         const id    = sel.dataset.id;
         const catId = sel.value;
         console.debug("[txn] category change — txn id:", id, "new categoryId:", catId);
         try {
-          await updateDoc(doc(getDb(), "users", _uid, "transactions", id), { categoryId: catId, updatedAt: new Date() });
+          await updateDoc(doc(getDb(), "transactions", id), { categoryId: catId, updatedAt: new Date() });
           const txn = allTxns.find(t => t.id === id);
           if (txn) txn.categoryId = catId;
           sel.classList.add("txn-category-saved");
@@ -246,7 +265,7 @@ export async function initTransactionsPage(_uid) {
       });
     });
 
-    // ── Delete with confirm (FIX 1: user-scoped doc path) ────────────
+    // ── Delete with confirm (global collection path) ──────────────────
     tbody.querySelectorAll(".txn-delete-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id  = btn.dataset.id;
@@ -254,7 +273,7 @@ export async function initTransactionsPage(_uid) {
         if (!confirm("Delete this transaction? This cannot be undone.")) return;
         console.debug("[txn] deleting transaction id:", id);
         try {
-          await deleteDoc(doc(getDb(), "users", _uid, "transactions", id));
+          await deleteDoc(doc(getDb(), "transactions", id));
           allTxns = allTxns.filter(t => t.id !== id);
           row?.remove();
           renderTable();
