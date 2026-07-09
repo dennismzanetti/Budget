@@ -31,7 +31,7 @@ import {
   Timestamp,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { ensureCategoryExists } from "./categories.js";
+import { ensureCategoryExists, getCategoriesMap } from "./categories.js";
 
 const db = getFirestore(getApp());
 
@@ -192,8 +192,10 @@ export function parseBofACSV(csvText, accountId) {
 
 /**
  * Import parsed BofA transactions into Firestore.
- * - Resolves _categoryName to a real categoryId (auto-creates categories as needed).
- * - Normalises category name keys to lowercase before lookup to prevent casing mismatches.
+ * - Fetches all existing categories once, builds a name→id map.
+ * - Only calls ensureCategoryExists for names not already in Firestore,
+ *   preventing duplicate category creation from race conditions.
+ * - Normalises category name keys to lowercase before lookup.
  * - Skips rows whose sourceId already exists (safe to re-import same file).
  */
 export async function importTransactions(uid, candidates) {
@@ -204,14 +206,27 @@ export async function importTransactions(uid, candidates) {
   let duplicates = 0;
   let imported = 0;
 
-  // ── Resolve category names → IDs (batch, deduplicated) ───────────────────
+  // ── Resolve category names → IDs ─────────────────────────────────────────
+  // Step 1: Fetch all existing categories in a single read, build name→id map
+  const nameToId = {};
+  try {
+    const existingCatMap = await getCategoriesMap(uid); // { id -> { name, color } }
+    Object.entries(existingCatMap).forEach(([id, cat]) => {
+      nameToId[cat.name.trim().toLowerCase()] = id;
+    });
+  } catch (e) {
+    errors.push(`Failed to load existing categories: ${e.message}`);
+  }
+
+  // Step 2: For any unique category name not already in Firestore, create it
   const uniqueNames = [...new Set(
     candidates
       .map(c => c._categoryName ? c._categoryName.trim().toLowerCase() : "")
       .filter(n => n.length > 0)
   )];
-  const nameToId = {};
+
   for (const nameLower of uniqueNames) {
+    if (nameToId[nameLower]) continue; // already exists — skip
     try {
       const originalName = candidates.find(
         c => c._categoryName && c._categoryName.trim().toLowerCase() === nameLower
