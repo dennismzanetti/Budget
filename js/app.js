@@ -92,8 +92,9 @@ function updateUI(user) {
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  // If landing directly on settings, load commits immediately
+  // If landing directly on settings or accounts, init immediately
   if (getPage() === 'settings') loadCommits();
+  if (getPage() === 'accounts') initAccountsPage(user.uid);
 }
 
 async function initAuth() {
@@ -116,8 +117,10 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 // Load commits whenever the user navigates to the settings page
+// Re-init accounts page whenever the user navigates to the accounts page
 window.addEventListener('hashchange', () => {
   if (getPage() === 'settings') loadCommits();
+  if (getPage() === 'accounts') initAccountsPage(auth.currentUser?.uid);
 });
 
 // ── Init ───────────────────────────────────────────────────────────────
