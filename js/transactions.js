@@ -5,7 +5,7 @@
  *   initTransactionsPage(uid) — wires up the #transactions page UI
  *
  * Schema (written by import.js):
- *   Collection : transactions (global)
+ *   Collection : transactions (global, root-level)
  *   Fields     : date (Timestamp), payee (string), amountCents (int),
  *                type ("expense"|"income"), accountId, categoryId,
  *                notes, sourceId, isActive, isCleared, source
@@ -62,8 +62,10 @@ function categorySelect(currentCategoryId, rowId, catMap) {
 }
 
 export async function initTransactionsPage(_uid) {
+  console.debug("[txn] initTransactionsPage called, uid:", _uid);
+
   const page = document.getElementById("transactions");
-  if (!page) return;
+  if (!page) { console.warn("[txn] #transactions page element not found"); return; }
 
   // ── DOM refs ──────────────────────────────────────────────────────
   const acctFilter    = document.getElementById("txnFilterAccount");
@@ -78,7 +80,9 @@ export async function initTransactionsPage(_uid) {
   const summaryIncome = document.getElementById("txnSummaryIncome");
   const summaryExpense= document.getElementById("txnSummaryExpense");
 
-  if (!tbody) return;
+  console.debug("[txn] DOM refs — tbody:", !!tbody, "acctFilter:", !!acctFilter, "catFilter:", !!catFilter, "typeFilter:", !!typeFilter);
+
+  if (!tbody) { console.error("[txn] #txnTableBody not found — aborting"); return; }
 
   // Populate account filter
   if (acctFilter) {
@@ -95,6 +99,7 @@ export async function initTransactionsPage(_uid) {
   try {
     const snap = await getDocs(collection(getDb(), "accounts"));
     snap.docs.forEach(d => { accountMap[d.id] = d.data().name ?? d.id; });
+    console.debug("[txn] accountMap loaded:", Object.keys(accountMap).length, "accounts", accountMap);
   } catch (e) {
     console.warn("[transactions] could not load account names", e);
   }
@@ -103,6 +108,7 @@ export async function initTransactionsPage(_uid) {
   let catMap = {};
   try {
     catMap = await getCategoriesMap(_uid);
+    console.debug("[txn] catMap loaded:", Object.keys(catMap).length, "categories", catMap);
   } catch (e) {
     console.warn("[transactions] could not load categories", e);
   }
@@ -121,11 +127,20 @@ export async function initTransactionsPage(_uid) {
 
   async function loadTransactions() {
     tbody.innerHTML = `<tr><td colspan="7" class="txn-loading">Loading\u2026</td></tr>`;
+    console.debug("[txn] loadTransactions — querying root collection: transactions");
     try {
       const txnCol = collection(getDb(), "transactions");
       const q = query(txnCol, orderBy("date", "desc"));
       const snap = await getDocs(q);
+      console.debug("[txn] Firestore snap.size:", snap.size);
+      if (snap.size > 0) {
+        const first = snap.docs[0];
+        console.debug("[txn] first doc id:", first.id, "data:", first.data());
+      } else {
+        console.warn("[txn] snapshot is EMPTY — no documents returned from root transactions collection");
+      }
       allTxns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.debug("[txn] allTxns loaded:", allTxns.length);
       renderTable();
     } catch (err) {
       console.error("[transactions] loadTransactions error:", err);
@@ -142,6 +157,8 @@ export async function initTransactionsPage(_uid) {
     const toVal     = dateTo?.value ? new Date(dateTo.value + "T23:59:59") : null;
     const searchVal = searchInput?.value.trim().toLowerCase() ?? "";
 
+    console.debug("[txn] renderTable — allTxns:", allTxns.length, "active filters:", { acctVal, catVal, typeVal, fromVal, toVal, searchVal });
+
     const filtered = allTxns.filter(t => {
       if (acctVal && t.accountId !== acctVal) return false;
       if (catVal  && t.categoryId !== catVal) return false;
@@ -157,6 +174,12 @@ export async function initTransactionsPage(_uid) {
       }
       return true;
     });
+
+    console.debug("[txn] filtered count:", filtered.length);
+    if (allTxns.length > 0 && filtered.length === 0) {
+      console.warn("[txn] allTxns has data but filtered is empty — check filter values above");
+      if (allTxns.length > 0) console.debug("[txn] sample allTxns[0]:", JSON.stringify(allTxns[0]));
+    }
 
     // Summary
     let totalIncomeCents = 0, totalExpenseCents = 0;
@@ -205,6 +228,7 @@ export async function initTransactionsPage(_uid) {
       sel.addEventListener("change", async () => {
         const id    = sel.dataset.id;
         const catId = sel.value;
+        console.debug("[txn] category change — txn id:", id, "new categoryId:", catId);
         try {
           await updateDoc(doc(getDb(), "transactions", id), { categoryId: catId, updatedAt: new Date() });
           const txn = allTxns.find(t => t.id === id);
@@ -225,6 +249,7 @@ export async function initTransactionsPage(_uid) {
         const id  = btn.dataset.id;
         const row = tbody.querySelector(`tr[data-id="${id}"]`);
         if (!confirm("Delete this transaction? This cannot be undone.")) return;
+        console.debug("[txn] deleting transaction id:", id);
         try {
           await deleteDoc(doc(getDb(), "transactions", id));
           allTxns = allTxns.filter(t => t.id !== id);
