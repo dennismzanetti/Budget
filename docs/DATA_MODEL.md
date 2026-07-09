@@ -66,16 +66,18 @@ Core financial record. Each row is one debit, credit, or transfer leg.
 
 | Field | Type | Description |
 |---|---|---|
-| `date` | `timestamp` | Transaction date (user-selected) |
+| `date` | `timestamp` | Transaction date (user-selected or parsed from import) |
 | `amountCents` | `number` | Amount in **integer cents**; always positive |
 | `type` | `string` | `income` \| `expense` \| `transfer` |
 | `accountId` | `string` | Reference to `accounts/{accountId}` |
-| `categoryId` | `string \| null` | Reference to `categories/{categoryId}` |
+| `categoryId` | `string \| null` | Reference to `categories/{categoryId}`; `null` until categorized |
 | `payee` | `string` | Merchant or payee name |
 | `notes` | `string` | Optional free-text memo |
 | `transferGroupId` | `string \| null` | Shared ID linking the two legs of a transfer |
 | `isCleared` | `boolean` | Reconciliation flag |
 | `isActive` | `boolean` | Soft-delete flag |
+| `source` | `string \| null` | Import source identifier: `"bofa_csv"` for BofA imports, `null` for manual entries |
+| `sourceId` | `string \| null` | Deduplication key for imported rows (see Import section); `null` for manual entries |
 | `createdAt` | `timestamp` | `serverTimestamp()` |
 | `updatedAt` | `timestamp` | `serverTimestamp()` on every write |
 
@@ -123,6 +125,48 @@ A **single document** holding user preferences.
 
 ---
 
+## Bank of America CSV Import
+
+BofA checking/savings exports include a 6-line metadata header before the data rows. The actual column header appears on row 7. Credit card exports have a similar header but drop `Running Bal.` and may include a `Reference Number` column (ignored).
+
+### BofA CSV Column Mapping
+
+| BofA Column | Maps To | Notes |
+|---|---|---|
+| `Date` | `date` | Format `MM/DD/YYYY` — parsed to JS `Date`, stored as Firestore `Timestamp` |
+| `Description` | `payee` | Raw merchant string; no enrichment at import time |
+| `Amount` | `amountCents` | Negative = expense, Positive = income; multiplied by 100 and rounded |
+| `Running Bal.` | _(ignored)_ | Balance is computed from transactions, not stored directly |
+| `Reference Number` | _(ignored)_ | Credit card only; not stored |
+
+### Type Derivation
+
+- `Amount < 0` → `type: "expense"`, `amountCents = Math.round(Math.abs(amount) * 100)`
+- `Amount > 0` → `type: "income"`, `amountCents = Math.round(amount * 100)`
+- `Amount === 0` → row skipped
+
+### Deduplication
+
+Each imported transaction receives a `sourceId` computed as:
+
+```
+sourceId = "bofa__" + date_YYYYMMDD + "__" + description_trimmed + "__" + amountCents
+```
+
+Before writing, the importer queries:
+```js
+where("sourceId", "==", sourceId)
+```
+and skips the row if a matching document already exists. This makes re-importing the same CSV file safe.
+
+### Recommended Additional Index
+
+| Collection | Fields | Order | Purpose |
+|---|---|---|---|
+| `transactions` | `sourceId` | ASC | Fast deduplication lookup during import |
+
+---
+
 ## Firestore Security Rules (Recommended)
 
 ```js
@@ -145,4 +189,5 @@ service cloud.firestore {
 | `transactions` | `accountId`, `date` | ASC, DESC | Transactions by account, newest first |
 | `transactions` | `categoryId`, `date` | ASC, DESC | Transactions by category |
 | `transactions` | `date`, `type` | DESC, ASC | Filtered transaction list |
+| `transactions` | `sourceId` | ASC | Import deduplication lookup |
 | `budgets` | `categoryId`, `month` | ASC, DESC | Monthly budget lookup |
