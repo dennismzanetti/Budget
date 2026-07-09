@@ -7,7 +7,14 @@ const firebaseConfig = {
   appId: "1:309980875957:web:3c520e284b3ee1745302fc"
 };
 
+//Test Firestore connection
+import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+const testDoc = await addDoc(collection(db, "test"), {
+  message: "Firebase connected!",
+  timestamp: new Date()
+});
+console.log("Test doc written with ID:", testDoc.id);
 
 
 
