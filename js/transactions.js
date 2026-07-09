@@ -3,41 +3,27 @@
  *
  * Exports:
  *   initTransactionsPage(uid) — wires up the #transactions page UI
+ *
+ * Schema (written by import.js):
+ *   Collection : users/{uid}/transactions
+ *   Fields     : date (Timestamp), payee (string), amountCents (int),
+ *                type ("expense"|"income"), accountId, categoryId,
+ *                notes, sourceId, isActive, isCleared, source
  */
 
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, updateDoc, deleteDoc,
-  doc, query, orderBy, where
+  doc, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { populateAccountSelect } from "./accounts.js";
+import { getCategoriesMap } from "./categories.js";
 
 let _db = null;
 function getDb() {
   if (!_db) _db = getFirestore(getApp());
   return _db;
 }
-
-const CATEGORIES = [
-  "Auto & Transport",
-  "Bills & Utilities",
-  "Education",
-  "Entertainment",
-  "Food & Dining",
-  "Gifts & Donations",
-  "Health & Fitness",
-  "Home",
-  "Income",
-  "Insurance",
-  "Kids",
-  "Personal Care",
-  "Pets",
-  "Shopping",
-  "Taxes",
-  "Transfer",
-  "Travel",
-  "Uncategorized",
-];
 
 function escHtml(str) {
   return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -50,10 +36,11 @@ function formatDate(val) {
   return isNaN(d) ? val : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatAmount(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return val;
-  return Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Convert integer cents to a display dollar string (e.g. 1099 → "10.99") */
+function centsToDisplay(amountCents) {
+  const n = typeof amountCents === "number" ? amountCents : parseInt(amountCents, 10);
+  if (isNaN(n)) return "0.00";
+  return (Math.abs(n) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function getDateValue(val) {
@@ -63,9 +50,10 @@ function getDateValue(val) {
   return isNaN(d) ? null : d;
 }
 
-function categorySelect(current, rowId) {
-  const opts = CATEGORIES.map(c =>
-    `<option value="${escHtml(c)}"${c === current ? " selected" : ""}>${escHtml(c)}</option>`
+/** Build a <select> for categories using the live categories map */
+function categorySelect(currentCategoryId, rowId, catMap) {
+  const opts = Object.entries(catMap).map(([id, cat]) =>
+    `<option value="${escHtml(id)}"${id === currentCategoryId ? " selected" : ""}>${escHtml(cat.name)}</option>`
   ).join("");
   return `<select class="txn-category-select" data-id="${rowId}">
     <option value="">-- none --</option>
@@ -95,7 +83,6 @@ export async function initTransactionsPage(_uid) {
   // Populate account filter
   if (acctFilter) {
     await populateAccountSelect(_uid, acctFilter);
-    // Prepend "All Accounts" option
     const allOpt = document.createElement("option");
     allOpt.value = "";
     allOpt.textContent = "All Accounts";
@@ -103,29 +90,48 @@ export async function initTransactionsPage(_uid) {
     acctFilter.value = "";
   }
 
-  // Populate category filter
-  if (catFilter) {
-    catFilter.innerHTML =
-      '<option value="">All Categories</option>' +
-      CATEGORIES.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("");
-  }
-
   // ── Account name cache ────────────────────────────────────────────
   let accountMap = {};
   try {
-    const snap = await getDocs(collection(getDb(), "accounts"));
+    const snap = await getDocs(collection(getDb(), "users", _uid, "accounts"));
     snap.docs.forEach(d => { accountMap[d.id] = d.data().name ?? d.id; });
   } catch (e) {
-    console.warn("[transactions] could not load account names", e);
+    // Fall back to root accounts collection for compatibility
+    try {
+      const snap = await getDocs(collection(getDb(), "accounts"));
+      snap.docs.forEach(d => { accountMap[d.id] = d.data().name ?? d.id; });
+    } catch (e2) {
+      console.warn("[transactions] could not load account names", e2);
+    }
+  }
+
+  // ── Category map: { id -> { name, color } } ───────────────────────
+  // FIX #4: resolve categoryId to a display name via getCategoriesMap()
+  let catMap = {};
+  try {
+    catMap = await getCategoriesMap(_uid);
+  } catch (e) {
+    console.warn("[transactions] could not load categories", e);
+  }
+
+  // Populate category filter from the live catMap
+  if (catFilter) {
+    catFilter.innerHTML =
+      '<option value="">All Categories</option>' +
+      Object.entries(catMap)
+        .map(([id, cat]) => `<option value="${escHtml(id)}">${escHtml(cat.name)}</option>`)
+        .join("");
   }
 
   // ── Load all transactions ─────────────────────────────────────────
   let allTxns = [];
 
   async function loadTransactions() {
-    tbody.innerHTML = `<tr><td colspan="7" class="txn-loading">Loading…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="txn-loading">Loading\u2026</td></tr>`;
     try {
-      const q = query(collection(getDb(), "transactions"), orderBy("date", "desc"));
+      // FIX #1: query users/{uid}/transactions — not root-level "transactions"
+      const txnCol = collection(getDb(), "users", _uid, "transactions");
+      const q = query(txnCol, orderBy("date", "desc"));
       const snap = await getDocs(q);
       allTxns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderTable();
@@ -146,31 +152,33 @@ export async function initTransactionsPage(_uid) {
 
     const filtered = allTxns.filter(t => {
       if (acctVal && t.accountId !== acctVal) return false;
-      if (catVal  && t.category !== catVal)   return false;
-      const amt = parseFloat(t.amount ?? 0);
-      if (typeVal === "income"  && amt <= 0)  return false;
-      if (typeVal === "expense" && amt >= 0)  return false;
+      // FIX #4: filter by categoryId instead of category string
+      if (catVal  && t.categoryId !== catVal) return false;
+      // FIX #5: use the "type" field ("income"/"expense") — not amount sign
+      if (typeVal && t.type !== typeVal) return false;
       const d = getDateValue(t.date);
       if (fromVal && d && d < fromVal) return false;
       if (toVal   && d && d > toVal)   return false;
       if (searchVal) {
-        const desc = (t.description ?? "").toLowerCase();
-        const cat  = (t.category ?? "").toLowerCase();
-        if (!desc.includes(searchVal) && !cat.includes(searchVal)) return false;
+        // FIX #2: search payee (not description)
+        const payee   = (t.payee ?? "").toLowerCase();
+        const catName = (catMap[t.categoryId]?.name ?? "").toLowerCase();
+        const notes   = (t.notes ?? "").toLowerCase();
+        if (!payee.includes(searchVal) && !catName.includes(searchVal) && !notes.includes(searchVal)) return false;
       }
       return true;
     });
 
-    // Summary
-    let totalIncome = 0, totalExpense = 0;
+    // Summary — FIX #3: use amountCents / 100 for dollar totals
+    let totalIncomeCents = 0, totalExpenseCents = 0;
     filtered.forEach(t => {
-      const amt = parseFloat(t.amount ?? 0);
-      if (amt > 0) totalIncome  += amt;
-      else         totalExpense += amt;
+      const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
+      if (t.type === "income")  totalIncomeCents  += cents;
+      else                      totalExpenseCents += cents;
     });
     if (summaryCount)   summaryCount.textContent   = filtered.length.toLocaleString();
-    if (summaryIncome)  summaryIncome.textContent  = "$" + totalIncome.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (summaryExpense) summaryExpense.textContent = "-$" + Math.abs(totalExpense).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (summaryIncome)  summaryIncome.textContent  = "$" + (totalIncomeCents  / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (summaryExpense) summaryExpense.textContent = "-$" + (totalExpenseCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     if (filtered.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7" class="txn-empty">No transactions match your filters.</td></tr>`;
@@ -178,22 +186,23 @@ export async function initTransactionsPage(_uid) {
     }
 
     tbody.innerHTML = filtered.map(t => {
-      const amt = parseFloat(t.amount ?? 0);
-      const isIncome = amt > 0;
+      const isIncome = t.type === "income";
       const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "—");
+      // FIX #4: look up category name from catMap via categoryId
+      const catName  = catMap[t.categoryId]?.name ?? "";
       return `
         <tr class="txn-row" data-id="${t.id}">
           <td class="txn-col-date">${escHtml(formatDate(t.date))}</td>
-          <td class="txn-col-desc">${escHtml(t.description ?? "")}</td>
+          <td class="txn-col-desc">${escHtml(t.payee ?? "")}</td>
           <td class="txn-col-account txn-hide-mobile">${escHtml(acctName)}</td>
-          <td class="txn-col-category">${categorySelect(t.category ?? "", t.id)}</td>
+          <td class="txn-col-category">${categorySelect(t.categoryId ?? "", t.id, catMap)}</td>
           <td class="txn-col-type txn-hide-mobile">
             <span class="txn-type-badge txn-type-badge--${isIncome ? "income" : "expense"}">
               ${isIncome ? "Income" : "Expense"}
             </span>
           </td>
           <td class="txn-col-amount txn-amount--${isIncome ? "income" : "expense"}">
-            ${isIncome ? "" : "-"}$${formatAmount(t.amount)}
+            ${isIncome ? "" : "-"}$${centsToDisplay(t.amountCents)}
           </td>
           <td class="txn-col-actions">
             <button class="btn btn-ghost btn-sm txn-delete-btn" data-id="${t.id}" title="Delete transaction" aria-label="Delete transaction">
@@ -204,15 +213,15 @@ export async function initTransactionsPage(_uid) {
     }).join("");
 
     // ── Category inline-save ─────────────────────────────────────────
+    // FIX #1 + #4: update doc in users/{uid}/transactions and save categoryId
     tbody.querySelectorAll(".txn-category-select").forEach(sel => {
       sel.addEventListener("change", async () => {
-        const id  = sel.dataset.id;
-        const cat = sel.value;
+        const id    = sel.dataset.id;
+        const catId = sel.value;  // now a Firestore category document ID
         try {
-          await updateDoc(doc(getDb(), "transactions", id), { category: cat });
+          await updateDoc(doc(getDb(), "users", _uid, "transactions", id), { categoryId: catId, updatedAt: new Date() });
           const txn = allTxns.find(t => t.id === id);
-          if (txn) txn.category = cat;
-          // Green flash feedback
+          if (txn) txn.categoryId = catId;
           sel.classList.add("txn-category-saved");
           setTimeout(() => sel.classList.remove("txn-category-saved"), 900);
         } catch (err) {
@@ -224,13 +233,14 @@ export async function initTransactionsPage(_uid) {
     });
 
     // ── Delete with confirm ───────────────────────────────────────────
+    // FIX #1: delete from users/{uid}/transactions
     tbody.querySelectorAll(".txn-delete-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
-        const id = btn.dataset.id;
+        const id  = btn.dataset.id;
         const row = tbody.querySelector(`tr[data-id="${id}"]`);
         if (!confirm("Delete this transaction? This cannot be undone.")) return;
         try {
-          await deleteDoc(doc(getDb(), "transactions", id));
+          await deleteDoc(doc(getDb(), "users", _uid, "transactions", id));
           allTxns = allTxns.filter(t => t.id !== id);
           row?.remove();
           renderTable();
