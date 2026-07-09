@@ -105,6 +105,12 @@
             </a>
           </li>
           <li>
+            <a href="#categories" class="nav-item" data-page="categories" aria-current="false">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <span>Categories</span>
+            </a>
+          </li>
+          <li>
             <a href="#reports" class="nav-item" data-page="reports" aria-current="false">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
               <span>Reports</span>
@@ -172,7 +178,6 @@
             </button>
           </div>
 
-          <!-- Add account form (hidden by default) -->
           <div id="addAccountForm" class="card hidden" aria-label="Add new account">
             <h3 class="card-title">New Account</h3>
             <div class="form-grid">
@@ -203,8 +208,41 @@
             </div>
           </div>
 
-          <!-- Accounts list — populated by accounts.js -->
           <div id="accountsList" aria-live="polite"></div>
+        </section>
+
+        <!-- CATEGORIES PAGE -->
+        <section class="page hidden" id="page-categories" aria-hidden="true">
+          <div class="page-header">
+            <h2 class="page-title">Categories</h2>
+            <button id="addCategoryBtn" class="btn btn-primary" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Category
+            </button>
+          </div>
+
+          <!-- Add category form (hidden by default) -->
+          <div id="addCategoryForm" class="card hidden" aria-label="Add new category">
+            <h3 class="card-title">New Category</h3>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="form-label" for="newCategoryName">Category name <span aria-hidden="true">*</span></label>
+                <input id="newCategoryName" class="form-input" type="text" placeholder="e.g. Groceries" required />
+              </div>
+              <div class="form-field form-field--color">
+                <label class="form-label" for="newCategoryColor">Color</label>
+                <input id="newCategoryColor" class="form-input form-input--color" type="color" value="#4f98a3" />
+              </div>
+            </div>
+            <div id="addCategoryError" class="form-error hidden" role="alert"></div>
+            <div class="form-actions">
+              <button id="cancelAddCategory" class="btn btn-ghost" type="button">Cancel</button>
+              <button id="saveCategoryBtn" class="btn btn-primary" type="button">Save Category</button>
+            </div>
+          </div>
+
+          <!-- Categories list — populated by categories.js -->
+          <ul id="categoriesList" class="accounts-list" aria-live="polite"></ul>
         </section>
 
         <!-- REPORTS PAGE -->
@@ -217,7 +255,6 @@
         <section class="page hidden" id="page-import" aria-hidden="true">
           <h2 class="page-title">Import Transactions</h2>
 
-          <!-- Step 1: How to export from BofA -->
           <section class="card import-instructions">
             <div class="import-instructions__header">
               <div class="import-bank-badge">
@@ -251,12 +288,10 @@
             </ol>
           </section>
 
-          <!-- Step 2: Upload form -->
           <section class="card import-upload-card">
             <p class="eyebrow">Step 1 of 2</p>
             <h3>Select your CSV file</h3>
 
-            <!-- Account selector -->
             <div class="import-field">
               <label class="import-label" for="importAccountSelect">Destination account</label>
               <select id="importAccountSelect" class="import-select" aria-describedby="importAccountHint">
@@ -265,7 +300,6 @@
               <p id="importAccountHint" class="import-hint">Transactions will be added to this account</p>
             </div>
 
-            <!-- Drop zone -->
             <div
               id="importDropZone"
               class="import-dropzone"
@@ -288,7 +322,6 @@
               />
             </div>
 
-            <!-- Selected file preview -->
             <div id="importFilePreview" class="import-file-preview hidden" aria-live="polite">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               <span id="importFileName" class="import-file-name"></span>
@@ -298,10 +331,8 @@
               </button>
             </div>
 
-            <!-- Error banner -->
             <div id="importError" class="import-error hidden" role="alert" aria-live="assertive"></div>
 
-            <!-- Submit -->
             <div class="import-actions">
               <button id="importSubmitBtn" class="btn btn-primary" type="button" disabled>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -310,7 +341,6 @@
             </div>
           </section>
 
-          <!-- Step 3: Progress -->
           <section id="importProgressCard" class="card import-progress-card hidden" aria-live="polite">
             <p class="eyebrow">Step 2 of 2</p>
             <h3>Importing…</h3>
@@ -320,16 +350,12 @@
             <p id="importProgressMsg" class="import-progress-msg">Reading file…</p>
           </section>
 
-          <!-- Step 4: Results -->
           <section id="importResultCard" class="card import-result-card hidden" aria-live="polite">
             <div id="importResultIcon" class="import-result-icon" aria-hidden="true"></div>
             <h3 id="importResultTitle"></h3>
             <p id="importResultSummary" class="subtle"></p>
-
             <dl id="importResultStats" class="import-result-stats"></dl>
-
             <div id="importResultErrors" class="import-result-errors hidden"></div>
-
             <div class="import-actions">
               <button id="importAgainBtn" class="btn btn-ghost" type="button">Import another file</button>
               <a href="#transactions" data-page="transactions" class="btn btn-primary">View Transactions</a>
@@ -343,7 +369,6 @@
         <section class="page hidden" id="page-settings" aria-hidden="true">
           <h2 class="page-title">Settings</h2>
 
-          <!-- Profile card -->
           <section class="card profile-card">
             <img id="userPhotoLarge" class="avatar" src="https://placehold.co/72x72" alt="Signed-in user profile photo" width="72" height="72" />
             <div>
@@ -353,7 +378,6 @@
             </div>
           </section>
 
-          <!-- Recent commits card -->
           <section class="card commits-card">
             <div class="commits-header">
               <div>
@@ -383,7 +407,6 @@
                   </tr>
                 </thead>
                 <tbody id="commitsTbody">
-                  <!-- Populated by js/commits.js -->
                 </tbody>
               </table>
             </div>

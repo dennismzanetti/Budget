@@ -12,6 +12,7 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebas
 import { initNav, navigateTo, getPage } from "./nav.js";
 import { loadCommits } from "./commits.js";
 import { seedAccountsIfEmpty, initAccountsPage } from "./accounts.js";
+import { initCategoriesPage } from "./categories.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
@@ -84,17 +85,15 @@ function updateUI(user) {
   if (userNameEl) userNameEl.textContent = user.displayName || "User";
   if (userEmailEl) userEmailEl.textContent = user.email || "";
 
-  // Initialize nav after the logged-in view is visible
   initNav();
 
-  // Seed accounts on first login, then init the accounts page
   seedAccountsIfEmpty(user.uid)
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  // If landing directly on settings or accounts, init immediately
   if (getPage() === 'settings') loadCommits();
   if (getPage() === 'accounts') initAccountsPage(user.uid);
+  if (getPage() === 'categories') initCategoriesPage(user.uid);
 }
 
 async function initAuth() {
@@ -116,11 +115,10 @@ logoutBtn.addEventListener("click", async () => {
   catch (error) { console.error("Logout failed:", error); alert(error.message); }
 });
 
-// Load commits whenever the user navigates to the settings page
-// Re-init accounts page whenever the user navigates to the accounts page
 window.addEventListener('hashchange', () => {
-  if (getPage() === 'settings') loadCommits();
-  if (getPage() === 'accounts') initAccountsPage(auth.currentUser?.uid);
+  if (getPage() === 'settings')    loadCommits();
+  if (getPage() === 'accounts')    initAccountsPage(auth.currentUser?.uid);
+  if (getPage() === 'categories')  initCategoriesPage(auth.currentUser?.uid);
 });
 
 // ── Init ───────────────────────────────────────────────────────────────

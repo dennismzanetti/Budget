@@ -11,6 +11,7 @@
  *
  * Columns: Date, Description, Amount, Running Bal. (checking/savings)
  *          Date, Description, Reference Number, Credits, Debits (credit card variant)
+ *          The credit card format may also include a "Category" column.
  */
 
 import {
@@ -24,13 +25,10 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { db } from "./app.js";
+import { ensureCategoryExists } from "./categories.js";
 
 // ── CSV Parsing ───────────────────────────────────────────────────────────────
 
-/**
- * Parse a raw CSV string into an array of row arrays.
- * Handles quoted fields that may contain commas.
- */
 function parseCSV(text) {
   const rows = [];
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
@@ -57,10 +55,6 @@ function parseCSV(text) {
   return rows;
 }
 
-/**
- * Detect the header row index (0-based) by looking for a row
- * that starts with "Date" in the first column.
- */
 function findHeaderRow(rows) {
   for (let i = 0; i < rows.length; i++) {
     if (rows[i][0] && rows[i][0].trim().toLowerCase() === "date") return i;
@@ -68,9 +62,6 @@ function findHeaderRow(rows) {
   return -1;
 }
 
-/**
- * Parse a BofA date string "MM/DD/YYYY" into a JS Date (midnight UTC).
- */
 function parseBofADate(str) {
   const parts = str.trim().split("/");
   if (parts.length !== 3) return null;
@@ -79,18 +70,12 @@ function parseBofADate(str) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * Convert a dollar string like "-84.50" or "1,234.00" to integer cents.
- */
 function dollarToCents(str) {
   const cleaned = str.replace(/,/g, "").trim();
   const val = parseFloat(cleaned);
   return isNaN(val) ? null : Math.round(val * 100);
 }
 
-/**
- * Build a stable deduplication key for a BofA transaction row.
- */
 function buildSourceId(dateObj, description, amountCents) {
   const yyyy = dateObj.getUTCFullYear();
   const mm = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
@@ -99,14 +84,6 @@ function buildSourceId(dateObj, description, amountCents) {
   return `bofa__${yyyy}${mm}${dd}__${safDesc}__${amountCents}`;
 }
 
-// ── Detect credit card vs checking/savings format ────────────────────────────
-
-/**
- * Returns the column index map for a given header row.
- * Handles two known BofA formats:
- *   Checking/Savings: Date, Description, Amount, Running Bal.
- *   Credit Card:      Date, Description, Reference Number, Credits, Debits
- */
 function buildColumnMap(headerRow) {
   const map = {};
   headerRow.forEach((col, i) => {
@@ -116,20 +93,13 @@ function buildColumnMap(headerRow) {
   return map;
 }
 
-/**
- * Extract amount in cents and type from a data row.
- * Checking: single "amount" column, negative = expense.
- * Credit:   separate "credits" and "debits" columns.
- */
 function extractAmount(row, colMap) {
   if (colMap["amount"] !== undefined) {
-    // Checking / savings format
     const cents = dollarToCents(row[colMap["amount"]] || "");
     if (cents === null) return null;
     return { amountCents: Math.abs(cents), type: cents < 0 ? "expense" : "income" };
   }
   if (colMap["credits"] !== undefined || colMap["debits"] !== undefined) {
-    // Credit card format
     const creditStr = row[colMap["credits"]] || "";
     const debitStr  = row[colMap["debits"]]  || "";
     if (creditStr.trim() !== "") {
@@ -148,11 +118,8 @@ function extractAmount(row, colMap) {
 
 /**
  * Parse a BofA CSV file contents into an array of candidate transaction objects.
- * Does NOT write to Firestore — call importTransactions() for that.
- *
- * @param {string} csvText  Raw text content of the CSV file.
- * @param {string} accountId  Firestore accountId to attach transactions to.
- * @returns {{ parsed: object[], skippedRows: number, parseErrors: string[] }}
+ * Category names from the CSV are preserved as `_categoryName` for resolution
+ * during the Firestore write phase.
  */
 export function parseBofACSV(csvText, accountId) {
   const rows = parseCSV(csvText);
@@ -169,7 +136,6 @@ export function parseBofACSV(csvText, accountId) {
   let skippedRows = 0;
 
   dataRows.forEach((row, i) => {
-    // Skip empty rows
     if (row.every(c => c.trim() === "")) { skippedRows++; return; }
 
     const dateStr = row[colMap["date"]] || "";
@@ -188,6 +154,11 @@ export function parseBofACSV(csvText, accountId) {
       return;
     }
 
+    // Read category name from CSV if present (credit card format may have it)
+    const categoryName = (colMap["category"] !== undefined)
+      ? (row[colMap["category"]] || "").trim()
+      : "";
+
     const sourceId = buildSourceId(dateObj, description, amountInfo.amountCents);
 
     parsed.push({
@@ -196,7 +167,8 @@ export function parseBofACSV(csvText, accountId) {
       amountCents: amountInfo.amountCents,
       type: amountInfo.type,
       accountId,
-      categoryId: null,
+      categoryId: null,          // resolved in importTransactions()
+      _categoryName: categoryName, // temporary — stripped before Firestore write
       notes: "",
       transferGroupId: null,
       isCleared: false,
@@ -213,11 +185,8 @@ export function parseBofACSV(csvText, accountId) {
 
 /**
  * Import parsed BofA transactions into Firestore for the given user.
- * Skips rows whose sourceId already exists (safe to re-import same file).
- *
- * @param {string} uid  Firebase Auth UID.
- * @param {object[]} candidates  Output of parseBofACSV().parsed.
- * @returns {Promise<{ imported: number, duplicates: number, errors: string[] }>}
+ * - Resolves _categoryName to a real categoryId (auto-creates categories as needed).
+ * - Skips rows whose sourceId already exists (safe to re-import same file).
  */
 export async function importTransactions(uid, candidates) {
   if (!candidates.length) return { imported: 0, duplicates: 0, errors: [] };
@@ -227,18 +196,27 @@ export async function importTransactions(uid, candidates) {
   let duplicates = 0;
   let imported = 0;
 
-  // Firestore batch writes are capped at 500 ops — chunk if needed.
+  // ── Resolve category names → IDs (batch, deduplicated) ───────────────────
+  const uniqueNames = [...new Set(
+    candidates.map(c => c._categoryName).filter(n => n && n.length > 0)
+  )];
+  const nameToId = {};
+  for (const name of uniqueNames) {
+    try {
+      nameToId[name.toLowerCase()] = await ensureCategoryExists(uid, name);
+    } catch (e) {
+      errors.push(`Category lookup failed for "${name}": ${e.message}`);
+    }
+  }
+
   const BATCH_SIZE = 400;
 
   for (let offset = 0; offset < candidates.length; offset += BATCH_SIZE) {
     const chunk = candidates.slice(offset, offset + BATCH_SIZE);
-
-    // Collect all sourceIds in this chunk and query for existing duplicates.
     const sourceIds = chunk.map(c => c.sourceId);
-
-    // Firestore "in" queries support up to 30 items; split into sub-queries.
     const existingIds = new Set();
     const IN_LIMIT = 30;
+
     for (let j = 0; j < sourceIds.length; j += IN_LIMIT) {
       const slice = sourceIds.slice(j, j + IN_LIMIT);
       try {
@@ -249,7 +227,6 @@ export async function importTransactions(uid, candidates) {
       }
     }
 
-    // Write new transactions in a batch.
     const batch = writeBatch(db);
     let batchCount = 0;
 
@@ -258,8 +235,15 @@ export async function importTransactions(uid, candidates) {
         duplicates++;
         continue;
       }
+
+      // Resolve category ID from name, then strip the temp field
+      const { _categoryName, ...txnData } = txn;
+      if (_categoryName) {
+        txnData.categoryId = nameToId[_categoryName.toLowerCase()] || null;
+      }
+
       const ref = doc(txnCol);
-      batch.set(ref, { ...txn, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      batch.set(ref, { ...txnData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       batchCount++;
       imported++;
     }
@@ -279,18 +263,8 @@ export async function importTransactions(uid, candidates) {
 
 // ── High-level helper ─────────────────────────────────────────────────────────
 
-/**
- * Full pipeline: parse a BofA CSV file and write to Firestore.
- *
- * @param {string} uid
- * @param {File} file         A File object from an <input type="file"> element.
- * @param {string} accountId  Firestore accountId to attach transactions to.
- * @param {function} onProgress  Optional callback({ step, message }).
- * @returns {Promise<{ imported, duplicates, skippedRows, parseErrors, writeErrors }>}
- */
 export async function importBofAFile(uid, file, accountId, onProgress = () => {}) {
   onProgress({ step: "read", message: "Reading file…" });
-
   const csvText = await file.text();
 
   onProgress({ step: "parse", message: "Parsing transactions…" });
