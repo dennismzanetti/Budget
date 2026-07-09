@@ -6,9 +6,8 @@
  *   initAccountsPage(uid)              — wires up the #accounts page UI
  *   populateAccountSelect(uid, select) — fills a <select> with account options
  *
- * NOTE: db is obtained here directly via getApp() (not imported from app.js)
- *       to avoid a circular dependency: app.js → accounts.js → app.js.
- *       Firebase deduplicates the app instance so both modules share the same db.
+ * NOTE: db is resolved lazily (on first use) via getApp() so this module can be
+ *       imported before initializeApp() runs in app.js without throwing no-app.
  */
 
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -17,8 +16,13 @@ import {
   deleteDoc, doc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Grab the already-initialised Firebase app (initialised in app.js first)
-const db = getFirestore(getApp());
+// Lazily resolved — not called until the first exported function runs,
+// by which point app.js has already called initializeApp().
+let _db = null;
+function getDb() {
+  if (!_db) _db = getFirestore(getApp());
+  return _db;
+}
 
 // ── Default seed data ─────────────────────────────────────────────────
 const DEFAULT_ACCOUNTS = [
@@ -37,7 +41,7 @@ const TYPE_LABELS = {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 function accountsRef(uid) {
-  return collection(db, "users", uid, "accounts");
+  return collection(getDb(), "users", uid, "accounts");
 }
 
 async function fetchAccounts(uid) {
@@ -61,7 +65,7 @@ export async function seedAccountsIfEmpty(uid) {
 // ── Populate a <select> element ───────────────────────────────────────
 export async function populateAccountSelect(uid, selectEl) {
   if (!selectEl) return;
-  selectEl.innerHTML = '<option value="">Loading accounts…</option>';
+  selectEl.innerHTML = '<option value="">Loading accounts\u2026</option>';
   try {
     const accounts = await fetchAccounts(uid);
     if (accounts.length === 0) {
@@ -69,7 +73,7 @@ export async function populateAccountSelect(uid, selectEl) {
       return;
     }
     selectEl.innerHTML =
-      '<option value="">Select account…</option>' +
+      '<option value="">Select account\u2026</option>' +
       accounts
         .filter(a => a.isActive !== false)
         .map(a => `<option value="${a.id}">${a.name} (${TYPE_LABELS[a.type] ?? a.type})</option>`)
@@ -94,7 +98,7 @@ export async function initAccountsPage(uid) {
   if (!listEl) return; // page not in DOM yet
 
   async function renderList() {
-    listEl.innerHTML = '<div class="accounts-loading">Loading…</div>';
+    listEl.innerHTML = '<div class="accounts-loading">Loading\u2026</div>';
     const accounts = await fetchAccounts(uid);
     if (accounts.length === 0) {
       listEl.innerHTML = `
@@ -108,7 +112,7 @@ export async function initAccountsPage(uid) {
       <div class="account-card" data-id="${a.id}">
         <div class="account-card__info">
           <span class="account-card__name">${a.name}</span>
-          <span class="account-card__meta">${TYPE_LABELS[a.type] ?? a.type} · ${a.institution ?? ""}</span>
+          <span class="account-card__meta">${TYPE_LABELS[a.type] ?? a.type} \u00b7 ${a.institution ?? ""}</span>
         </div>
         <div class="account-card__actions">
           <button class="btn btn-ghost btn-sm js-toggle-active"
@@ -128,7 +132,7 @@ export async function initAccountsPage(uid) {
     listEl.querySelectorAll(".js-toggle-active").forEach(btn => {
       btn.addEventListener("click", async () => {
         const isActive = btn.dataset.active === "true";
-        await updateDoc(doc(db, "users", uid, "accounts", btn.dataset.id), { isActive: !isActive });
+        await updateDoc(doc(getDb(), "users", uid, "accounts", btn.dataset.id), { isActive: !isActive });
         renderList();
       });
     });
@@ -136,13 +140,13 @@ export async function initAccountsPage(uid) {
     listEl.querySelectorAll(".js-delete-account").forEach(btn => {
       btn.addEventListener("click", async () => {
         if (!confirm("Delete this account? This won't delete imported transactions.")) return;
-        await deleteDoc(doc(db, "users", uid, "accounts", btn.dataset.id));
+        await deleteDoc(doc(getDb(), "users", uid, "accounts", btn.dataset.id));
         renderList();
       });
     });
   }
 
-  // ── Add account form ─────────────────────────────────────────────────
+  // ── Add account form ────────────────────────────────────────────────
   if (addBtn && addForm) {
     addBtn.addEventListener("click", () => {
       addForm.classList.remove("hidden");
