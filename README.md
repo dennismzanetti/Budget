@@ -24,6 +24,6 @@ Example:
 
 If your repository is named `budget-app`, your site URL will usually be:
 
-`https://YOUR_USERNAME.github.io/budget-app/`
+`https://dennismzanetti.github.io/budget-app/`
 
 Add `YOUR_USERNAME.github.io` to Firebase authorized domains.
