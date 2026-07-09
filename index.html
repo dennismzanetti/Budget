@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budget App</title>
+  <meta name="description" content="Household budget app shell with Firebase Google login." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" role="img" aria-label="Budget App logo">
+          <rect x="6" y="8" width="36" height="32" rx="10" fill="none" stroke="currentColor" stroke-width="3"></rect>
+          <path d="M16 29c2-4 4-6 8-6s6 2 8 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+          <path d="M18 18h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+        </svg>
+      </div>
+      <div>
+        <h1>Budget App</h1>
+        <p class="subtle">Household budget starter shell</p>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button id="themeToggle" class="btn btn-ghost" type="button" aria-label="Toggle theme">
+        Theme
+      </button>
+      <button id="loginBtn" class="btn btn-primary" type="button">
+        Sign in with Google
+      </button>
+      <button id="logoutBtn" class="btn btn-secondary hidden" type="button">
+        Sign out
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="page-shell">
+    <section id="loggedOutView" class="hero card">
+      <div class="hero-copy">
+        <p class="eyebrow">Secure access</p>
+        <h2>Your budgeting workspace starts here.</h2>
+        <p>
+          Sign in with your Google account to load your personal budget data from Firebase.
+        </p>
+        <button id="heroLoginBtn" class="btn btn-primary" type="button">
+          Continue with Google
+        </button>
+      </div>
+      <div class="hero-panel">
+        <div class="mini-stat">
+          <span class="mini-stat-label">Monthly plan</span>
+          <strong>$0.00</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Spent</span>
+          <strong>$0.00</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Remaining</span>
+          <strong>$0.00</strong>
+        </div>
+      </div>
+    </section>
+
+    <section id="loggedInView" class="hidden">
+      <section class="card profile-card">
+        <img id="userPhoto" class="avatar" src="https://placehold.co/72x72" alt="Signed-in user profile photo" width="72" height="72" />
+        <div>
+          <p class="eyebrow">Signed in</p>
+          <h2 id="userName">User name</h2>
+          <p id="userEmail" class="subtle">user@example.com</p>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="card">
+          <p class="eyebrow">Accounts</p>
+          <h3>Connected balances</h3>
+          <p class="subtle">Placeholder for checking, savings, and credit accounts.</p>
+        </article>
+
+        <article class="card">
+          <p class="eyebrow">Budget</p>
+          <h3>Category targets</h3>
+          <p class="subtle">Placeholder for groceries, utilities, mortgage, and subscriptions.</p>
+        </article>
+
+        <article class="card">
+          <p class="eyebrow">Transactions</p>
+          <h3>Recent activity</h3>
+          <p class="subtle">Placeholder for imported or manual transactions.</p>
+        </article>
+
+        <article class="card">
+          <p class="eyebrow">Reporting</p>
+          <h3>Monthly summary</h3>
+          <p class="subtle">Placeholder for totals, trends, and cash flow summaries.</p>
+        </article>
+      </section>
+    </section>
+
+    <section class="card setup-card">
+      <p class="eyebrow">Next setup</p>
+      <h2>After deployment</h2>
+      <ul>
+        <li>Add your Firebase web config in `firebase-config.js`.</li>
+        <li>Enable Google sign-in in Firebase Authentication.</li>
+        <li>Add your GitHub Pages domain to Firebase authorized domains.</li>
+        <li>Enable GitHub Pages from the repository settings.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

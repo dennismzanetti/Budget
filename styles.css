@@ -1,0 +1,269 @@
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef3f8;
+  --text: #18212b;
+  --muted: #5e6a77;
+  --border: #d9e2ec;
+  --primary: #0f766e;
+  --primary-hover: #115e59;
+  --secondary: #dbe8e6;
+  --secondary-text: #11443f;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 16px 40px rgba(15, 23, 42, 0.08);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --content: 1120px;
+}
+
+html[data-theme="dark"] {
+  --bg: #11161c;
+  --surface: #1a232d;
+  --surface-2: #22303d;
+  --text: #eef4fb;
+  --muted: #a8b5c2;
+  --border: #304252;
+  --primary: #5dc1b8;
+  --primary-hover: #7acec6;
+  --secondary: #20323a;
+  --secondary-text: #c5f3ee;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Inter", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  z-index: 10;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+}
+
+.topbar {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.brand h1,
+.hero h2,
+.setup-card h2,
+.profile-card h2,
+.card h3 {
+  margin: 0;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  color: var(--primary);
+}
+
+.subtle {
+  color: var(--muted);
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.page-shell {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr;
+  gap: 1rem;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 1rem;
+}
+
+.hero-copy p:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.hero-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mini-stat {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+}
+
+.mini-stat-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-bottom: 0.3rem;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.setup-card ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.btn {
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-secondary {
+  background: var(--secondary);
+  color: var(--secondary-text);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 800px) {
+  .topbar,
+  .brand,
+  .topbar-actions,
+  .hero,
+  .dashboard-grid,
+  .profile-card {
+    display: block;
+  }
+
+  .brand {
+    margin-bottom: 1rem;
+  }
+
+  .topbar-actions > * {
+    margin: 0 0.5rem 0.5rem 0;
+  }
+
+  .hero-panel,
+  .dashboard-grid {
+    margin-top: 1rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-card img {
+    margin-bottom: 0.75rem;
+  }
+}
