@@ -55,14 +55,22 @@ async function fetchAccounts() {
 
 // ── Seed ──────────────────────────────────────────────────────────────
 export async function seedAccountsIfEmpty(_uid) {
-  const snap = await getDocs(accountsRef());
-  if (!snap.empty) return; // already seeded
-  await Promise.all(
-    DEFAULT_ACCOUNTS.map(a =>
-      addDoc(accountsRef(), { ...a, isActive: true, createdAt: serverTimestamp() })
-    )
-  );
-  console.log("[accounts] seeded default accounts (global collection)");
+  try {
+    const snap = await getDocs(accountsRef());
+    if (!snap.empty) {
+      console.log("[accounts] accounts already exist, skipping seed");
+      return;
+    }
+    await Promise.all(
+      DEFAULT_ACCOUNTS.map(a =>
+        addDoc(accountsRef(), { ...a, isActive: true, createdAt: serverTimestamp() })
+      )
+    );
+    console.log("[accounts] seeded default accounts (global collection)");
+  } catch (err) {
+    console.error("[accounts] seed error:", err);
+    throw err; // re-throw so app.js .catch() also fires
+  }
 }
 
 // ── Populate a <select> element ───────────────────────────────────────
@@ -102,51 +110,56 @@ export async function initAccountsPage(_uid) {
 
   async function renderList() {
     listEl.innerHTML = '<div class="accounts-loading">Loading\u2026</div>';
-    const accounts = await fetchAccounts();
-    if (accounts.length === 0) {
-      listEl.innerHTML = `
-        <div class="empty-state">
-          <p>No accounts yet.</p>
-          <p>Click <strong>Add Account</strong> to get started.</p>
-        </div>`;
-      return;
+    try {
+      const accounts = await fetchAccounts();
+      if (accounts.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <p>No accounts yet.</p>
+            <p>Click <strong>Add Account</strong> to get started.</p>
+          </div>`;
+        return;
+      }
+      listEl.innerHTML = accounts.map(a => `
+        <div class="account-card" data-id="${a.id}">
+          <div class="account-card__info">
+            <span class="account-card__name">${a.name}</span>
+            <span class="account-card__meta">${TYPE_LABELS[a.type] ?? a.type} \u00b7 ${a.institution ?? ""}</span>
+          </div>
+          <div class="account-card__actions">
+            <button class="btn btn-ghost btn-sm js-toggle-active"
+              data-id="${a.id}" data-active="${a.isActive !== false}"
+              title="${a.isActive !== false ? 'Deactivate' : 'Activate'}">
+              ${a.isActive !== false
+                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 12H7"/><path d="M12 7l-5 5 5 5"/></svg> Deactivate'
+                : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 12h10"/><path d="M12 17l5-5-5-5"/></svg> Activate'}
+            </button>
+            <button class="btn btn-ghost btn-sm js-delete-account" data-id="${a.id}" title="Delete account">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </div>
+      `).join("");
+
+      listEl.querySelectorAll(".js-toggle-active").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const isActive = btn.dataset.active === "true";
+          await updateDoc(doc(getDb(), "accounts", btn.dataset.id), { isActive: !isActive });
+          renderList();
+        });
+      });
+
+      listEl.querySelectorAll(".js-delete-account").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Delete this account? This won't delete imported transactions.")) return;
+          await deleteDoc(doc(getDb(), "accounts", btn.dataset.id));
+          renderList();
+        });
+      });
+    } catch (err) {
+      console.error("[accounts] renderList error:", err);
+      listEl.innerHTML = '<div class="empty-state"><p>Error loading accounts. Check console for details.</p></div>';
     }
-    listEl.innerHTML = accounts.map(a => `
-      <div class="account-card" data-id="${a.id}">
-        <div class="account-card__info">
-          <span class="account-card__name">${a.name}</span>
-          <span class="account-card__meta">${TYPE_LABELS[a.type] ?? a.type} \u00b7 ${a.institution ?? ""}</span>
-        </div>
-        <div class="account-card__actions">
-          <button class="btn btn-ghost btn-sm js-toggle-active"
-            data-id="${a.id}" data-active="${a.isActive !== false}"
-            title="${a.isActive !== false ? 'Deactivate' : 'Activate'}">
-            ${a.isActive !== false
-              ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 12H7"/><path d="M12 7l-5 5 5 5"/></svg> Deactivate'
-              : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 12h10"/><path d="M12 17l5-5-5-5"/></svg> Activate'}
-          </button>
-          <button class="btn btn-ghost btn-sm js-delete-account" data-id="${a.id}" title="Delete account">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>
-        </div>
-      </div>
-    `).join("");
-
-    listEl.querySelectorAll(".js-toggle-active").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const isActive = btn.dataset.active === "true";
-        await updateDoc(doc(getDb(), "accounts", btn.dataset.id), { isActive: !isActive });
-        renderList();
-      });
-    });
-
-    listEl.querySelectorAll(".js-delete-account").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        if (!confirm("Delete this account? This won't delete imported transactions.")) return;
-        await deleteDoc(doc(getDb(), "accounts", btn.dataset.id));
-        renderList();
-      });
-    });
   }
 
   // ── Add account form ────────────────────────────────────────────────
@@ -172,19 +185,24 @@ export async function initAccountsPage(_uid) {
       const inst = instInput?.value.trim();
       if (!name) { nameInput?.focus(); return; }
       saveBtn.disabled = true;
-      await addDoc(accountsRef(), {
-        name,
-        type,
-        institution: inst || "",
-        isActive: true,
-        createdAt: serverTimestamp(),
-      });
-      addForm.classList.add("hidden");
-      addBtn?.classList.remove("hidden");
-      if (nameInput) nameInput.value = "";
-      if (instInput) instInput.value = "";
-      saveBtn.disabled = false;
-      renderList();
+      try {
+        await addDoc(accountsRef(), {
+          name,
+          type,
+          institution: inst || "",
+          isActive: true,
+          createdAt: serverTimestamp(),
+        });
+        addForm.classList.add("hidden");
+        addBtn?.classList.remove("hidden");
+        if (nameInput) nameInput.value = "";
+        if (instInput) instInput.value = "";
+        renderList();
+      } catch (err) {
+        console.error("[accounts] addDoc error:", err);
+      } finally {
+        saveBtn.disabled = false;
+      }
     });
   }
 

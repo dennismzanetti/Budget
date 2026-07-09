@@ -40,7 +40,7 @@ const themeToggle     = document.getElementById("themeToggle");
 const themeToggle2    = document.getElementById("themeToggle2");
 const root            = document.documentElement;
 
-// ── Theme ─────────────────────────────────────────────────────────────
+// ── Theme ───────────────────────────────────────────────────────────────
 function setTheme(theme) {
   root.setAttribute("data-theme", theme);
 }
@@ -55,7 +55,7 @@ function initTheme() {
   });
 });
 
-// ── Auth ─────────────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────────────
 async function login() {
   const useRedirect = window.innerWidth < 768;
   if (useRedirect) {
@@ -88,7 +88,9 @@ function updateUI(user) {
   initNav();
 
   // Seed accounts on first login, then init the accounts page
-  seedAccountsIfEmpty(user.uid).then(() => initAccountsPage(user.uid));
+  seedAccountsIfEmpty(user.uid)
+    .then(() => initAccountsPage(user.uid))
+    .catch(err => console.error("[seed] accounts seed failed:", err));
 
   // If landing directly on settings, load commits immediately
   if (getPage() === 'settings') loadCommits();
@@ -118,7 +120,7 @@ window.addEventListener('hashchange', () => {
   if (getPage() === 'settings') loadCommits();
 });
 
-// ── Init ─────────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────────────
 export { db };
 initTheme();
 initAuth();
