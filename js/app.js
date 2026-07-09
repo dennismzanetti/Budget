@@ -90,9 +90,8 @@ function updateUI(user) {
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  initTransactionsPage(user.uid)
-    .catch(err => console.error("[transactions] init failed:", err));
-
+  // Note: initTransactionsPage is NOT called here — partials may not have
+  // injected #transactions yet. The hashchange listener handles on-demand init.
   if (getPage() === 'settings')     loadCommits();
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);

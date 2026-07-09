@@ -6,47 +6,24 @@
  *  - Account dropdown populated from Firestore via accounts.js
  *  - Import button → calls importBofAFile() with progress feedback
  *  - Results card with stats and any parse/write errors
- *  - “Import another file” reset flow
+ *  - "Import another file" reset flow
+ *
+ * NOTE: All DOM queries and event bindings are deferred inside initImportPage()
+ * because this module loads before partials.js has injected the #import HTML.
  */
 
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { importBofAFile } from "./import.js";
 import { populateAccountSelect } from "./accounts.js";
 
-// ── DOM refs ──────────────────────────────────────────────────────────
-const dropZone         = document.getElementById("importDropZone");
-const fileInput        = document.getElementById("importFileInput");
-const filePreview      = document.getElementById("importFilePreview");
-const fileNameEl       = document.getElementById("importFileName");
-const fileSizeEl       = document.getElementById("importFileSize");
-const fileClearBtn     = document.getElementById("importFileClear");
-const errorBanner      = document.getElementById("importError");
-const submitBtn        = document.getElementById("importSubmitBtn");
-const accountSelect    = document.getElementById("importAccountSelect");
-const progressCard     = document.getElementById("importProgressCard");
-const progressFill     = document.getElementById("importProgressFill");
-const progressMsg      = document.getElementById("importProgressMsg");
-const progressBar      = document.getElementById("importProgressBar");
-const resultCard       = document.getElementById("importResultCard");
-const resultIcon       = document.getElementById("importResultIcon");
-const resultTitle      = document.getElementById("importResultTitle");
-const resultSummary    = document.getElementById("importResultSummary");
-const resultStats      = document.getElementById("importResultStats");
-const resultErrors     = document.getElementById("importResultErrors");
-const importAgainBtn   = document.getElementById("importAgainBtn");
-const uploadCard       = document.querySelector(".import-upload-card");
-
 // ── State ──────────────────────────────────────────────────────────────
-let selectedFile = null;
 let currentUid   = null;
+let initialized  = false;
 
-// ── Auth ─────────────────────────────────────────────────────────────
+// Track auth independently of page init
 const auth = getAuth();
 onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUid = user.uid;
-    populateAccountSelect(user.uid, accountSelect);
-  }
+  currentUid = user ? user.uid : null;
 });
 
 // ── File selection helpers ────────────────────────────────────────────────
@@ -56,171 +33,194 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function setFile(file) {
-  if (!file || !file.name.toLowerCase().endsWith(".csv")) {
-    showError("Please select a .csv file exported from Bank of America.");
+// ── Page init — deferred until #import is active ─────────────────────────
+export function initImportPage() {
+  // Re-query DOM every time the page is shown (outerHTML swap means old refs are stale)
+  const dropZone         = document.getElementById("importDropZone");
+  const fileInput        = document.getElementById("importFileInput");
+  const filePreview      = document.getElementById("importFilePreview");
+  const fileNameEl       = document.getElementById("importFileName");
+  const fileSizeEl       = document.getElementById("importFileSize");
+  const fileClearBtn     = document.getElementById("importFileClear");
+  const errorBanner      = document.getElementById("importError");
+  const submitBtn        = document.getElementById("importSubmitBtn");
+  const accountSelect    = document.getElementById("importAccountSelect");
+  const progressCard     = document.getElementById("importProgressCard");
+  const progressFill     = document.getElementById("importProgressFill");
+  const progressMsg      = document.getElementById("importProgressMsg");
+  const progressBar      = document.getElementById("importProgressBar");
+  const resultCard       = document.getElementById("importResultCard");
+  const resultIcon       = document.getElementById("importResultIcon");
+  const resultTitle      = document.getElementById("importResultTitle");
+  const resultSummary    = document.getElementById("importResultSummary");
+  const resultStats      = document.getElementById("importResultStats");
+  const resultErrors     = document.getElementById("importResultErrors");
+  const importAgainBtn   = document.getElementById("importAgainBtn");
+  const uploadCard       = document.querySelector(".import-upload-card");
+
+  if (!dropZone) {
+    console.warn("[import] #importDropZone not found — partial may not have loaded yet");
     return;
   }
-  selectedFile = file;
-  fileNameEl.textContent = file.name;
-  fileSizeEl.textContent = formatBytes(file.size);
-  filePreview.classList.remove("hidden");
-  dropZone.classList.add("import-dropzone--has-file");
-  hideError();
-  updateSubmitState();
-}
 
-function clearFile() {
-  selectedFile = null;
-  fileInput.value = "";
-  filePreview.classList.add("hidden");
-  dropZone.classList.remove("import-dropzone--has-file");
-  updateSubmitState();
-}
+  // Populate accounts dropdown
+  if (currentUid) populateAccountSelect(currentUid, accountSelect);
 
-function updateSubmitState() {
-  const ready = selectedFile !== null && accountSelect.value !== "";
-  submitBtn.disabled = !ready;
-}
+  let selectedFile = null;
 
-function showError(msg) {
-  errorBanner.textContent = msg;
-  errorBanner.classList.remove("hidden");
-}
+  function setFile(file) {
+    if (!file || !file.name.toLowerCase().endsWith(".csv")) {
+      showError("Please select a .csv file exported from Bank of America.");
+      return;
+    }
+    selectedFile = file;
+    fileNameEl.textContent = file.name;
+    fileSizeEl.textContent = formatBytes(file.size);
+    filePreview.classList.remove("hidden");
+    dropZone.classList.add("import-dropzone--has-file");
+    hideError();
+    updateSubmitState();
+  }
 
-function hideError() {
-  errorBanner.classList.add("hidden");
-  errorBanner.textContent = "";
-}
+  function clearFile() {
+    selectedFile = null;
+    fileInput.value = "";
+    filePreview.classList.add("hidden");
+    dropZone.classList.remove("import-dropzone--has-file");
+    updateSubmitState();
+  }
 
-// ── Drop zone events ────────────────────────────────────────────────
-dropZone.addEventListener("click", () => fileInput.click());
-dropZone.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
-});
+  function updateSubmitState() {
+    const ready = selectedFile !== null && accountSelect.value !== "";
+    submitBtn.disabled = !ready;
+  }
 
-dropZone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropZone.classList.add("import-dropzone--drag");
-});
-dropZone.addEventListener("dragleave", () => {
-  dropZone.classList.remove("import-dropzone--drag");
-});
-dropZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropZone.classList.remove("import-dropzone--drag");
-  const file = e.dataTransfer?.files?.[0];
-  if (file) setFile(file);
-});
+  function showError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.classList.remove("hidden");
+  }
 
-fileInput.addEventListener("change", () => {
-  if (fileInput.files[0]) setFile(fileInput.files[0]);
-});
+  function hideError() {
+    errorBanner.classList.add("hidden");
+    errorBanner.textContent = "";
+  }
 
-fileClearBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  clearFile();
-});
+  // ── Drop zone events ────────────────────────────────────────────────
+  dropZone.addEventListener("click", () => fileInput.click());
+  dropZone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+  });
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("import-dropzone--drag");
+  });
+  dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("import-dropzone--drag");
+  });
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("import-dropzone--drag");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) setFile(file);
+  });
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+  fileClearBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearFile();
+  });
+  accountSelect.addEventListener("change", updateSubmitState);
 
-accountSelect.addEventListener("change", updateSubmitState);
+  // ── Progress helpers ────────────────────────────────────────────────
+  const STEPS = { read: 15, parse: 45, write: 85, done: 100 };
 
-// ── Progress helpers ────────────────────────────────────────────────
-const STEPS = { read: 15, parse: 45, write: 85, done: 100 };
+  function setProgress(step, message) {
+    const pct = STEPS[step] ?? 50;
+    progressFill.style.width = `${pct}%`;
+    progressBar.setAttribute("aria-valuenow", pct);
+    progressMsg.textContent = message;
+  }
 
-function setProgress(step, message) {
-  const pct = STEPS[step] ?? 50;
-  progressFill.style.width = `${pct}%`;
-  progressBar.setAttribute("aria-valuenow", pct);
-  progressMsg.textContent = message;
-}
+  // ── Import flow ───────────────────────────────────────────────────────
+  submitBtn.addEventListener("click", async () => {
+    if (!selectedFile || !accountSelect.value || !currentUid) return;
+    hideError();
+    uploadCard.classList.add("hidden");
+    progressCard.classList.remove("hidden");
+    resultCard.classList.add("hidden");
+    setProgress("read", "Reading file…");
+    try {
+      const result = await importBofAFile(
+        currentUid,
+        selectedFile,
+        accountSelect.value,
+        ({ step, message }) => setProgress(step, message)
+      );
+      showResult(result);
+    } catch (err) {
+      progressCard.classList.add("hidden");
+      uploadCard.classList.remove("hidden");
+      showError(`Import failed: ${err.message}`);
+    }
+  });
 
-// ── Import flow ───────────────────────────────────────────────────────
-submitBtn.addEventListener("click", async () => {
-  if (!selectedFile || !accountSelect.value || !currentUid) return;
+  // ── Results display ──────────────────────────────────────────────────────
+  function showResult({ imported, duplicates, skippedRows, parseErrors, writeErrors }) {
+    progressCard.classList.add("hidden");
+    resultCard.classList.remove("hidden");
+    const hasErrors = (parseErrors?.length || 0) + (writeErrors?.length || 0) > 0;
+    const success = imported > 0 || (!hasErrors);
+    resultIcon.innerHTML = success
+      ? `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--success"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
+      : `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--warn"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    resultTitle.textContent = imported > 0
+      ? `${imported} transaction${imported !== 1 ? 's' : ''} imported`
+      : "No new transactions imported";
+    resultSummary.textContent = duplicates > 0
+      ? `${duplicates} duplicate${duplicates !== 1 ? 's' : ''} skipped — already in your database.`
+      : "";
+    const stats = [
+      { label: "Imported",     value: imported,        cls: "stat--green" },
+      { label: "Duplicates",   value: duplicates,      cls: "stat--muted" },
+      { label: "Skipped rows", value: skippedRows ?? 0, cls: "stat--muted" },
+    ];
+    resultStats.innerHTML = stats.map(s =>
+      `<div class="import-stat ${s.cls}"><dt>${s.label}</dt><dd>${s.value}</dd></div>`
+    ).join("");
+    const allErrors = [...(parseErrors || []), ...(writeErrors || [])];
+    if (allErrors.length) {
+      resultErrors.classList.remove("hidden");
+      resultErrors.innerHTML =
+        `<p class="import-error-heading">Issues encountered (${allErrors.length}):</p>` +
+        `<ul>${allErrors.map(e => `<li>${e}</li>`).join("")}</ul>`;
+    } else {
+      resultErrors.classList.add("hidden");
+    }
+  }
 
-  hideError();
-
-  // Show progress, hide upload form
-  uploadCard.classList.add("hidden");
-  progressCard.classList.remove("hidden");
-  resultCard.classList.add("hidden");
-  setProgress("read", "Reading file…");
-
-  try {
-    const result = await importBofAFile(
-      currentUid,
-      selectedFile,
-      accountSelect.value,
-      ({ step, message }) => setProgress(step, message)
-    );
-    showResult(result);
-  } catch (err) {
+  // ── Reset / import again ────────────────────────────────────────────────
+  importAgainBtn.addEventListener("click", () => {
+    clearFile();
+    hideError();
+    resultCard.classList.add("hidden");
     progressCard.classList.add("hidden");
     uploadCard.classList.remove("hidden");
-    showError(`Import failed: ${err.message}`);
-  }
-});
-
-// ── Results display ──────────────────────────────────────────────────────
-function showResult({ imported, duplicates, skippedRows, parseErrors, writeErrors }) {
-  progressCard.classList.add("hidden");
-  resultCard.classList.remove("hidden");
-
-  const hasErrors = (parseErrors?.length || 0) + (writeErrors?.length || 0) > 0;
-  const success = imported > 0 || (!hasErrors);
-
-  // Icon
-  resultIcon.innerHTML = success
-    ? `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--success"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
-    : `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--warn"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-
-  resultTitle.textContent = imported > 0
-    ? `${imported} transaction${imported !== 1 ? 's' : ''} imported`
-    : "No new transactions imported";
-
-  resultSummary.textContent = duplicates > 0
-    ? `${duplicates} duplicate${duplicates !== 1 ? 's' : ''} skipped — already in your database.`
-    : "";
-
-  // Stats grid
-  const stats = [
-    { label: "Imported",     value: imported,        cls: "stat--green" },
-    { label: "Duplicates",   value: duplicates,      cls: "stat--muted" },
-    { label: "Skipped rows", value: skippedRows ?? 0, cls: "stat--muted" },
-  ];
-  resultStats.innerHTML = stats.map(s =>
-    `<div class="import-stat ${s.cls}"><dt>${s.label}</dt><dd>${s.value}</dd></div>`
-  ).join("");
-
-  // Errors list
-  const allErrors = [...(parseErrors || []), ...(writeErrors || [])];
-  if (allErrors.length) {
-    resultErrors.classList.remove("hidden");
-    resultErrors.innerHTML =
-      `<p class="import-error-heading">Issues encountered (${allErrors.length}):</p>` +
-      `<ul>${allErrors.map(e => `<li>${e}</li>`).join("")}</ul>`;
-  } else {
+    progressFill.style.width = "0%";
+    progressBar.setAttribute("aria-valuenow", 0);
+    progressMsg.textContent = "";
     resultErrors.classList.add("hidden");
-  }
+    resultStats.innerHTML = "";
+  });
 }
 
-// ── Reset / import again ────────────────────────────────────────────────
-importAgainBtn.addEventListener("click", () => {
-  clearFile();
-  hideError();
-  resultCard.classList.add("hidden");
-  progressCard.classList.add("hidden");
-  uploadCard.classList.remove("hidden");
-  progressFill.style.width = "0%";
-  progressBar.setAttribute("aria-valuenow", 0);
-  progressMsg.textContent = "";
-  resultErrors.classList.add("hidden");
-  resultStats.innerHTML = "";
-});
-
-// ── Reload accounts dropdown when navigating to import page ───────────────
+// ── Trigger init on hashchange to #import ────────────────────────────────
 window.addEventListener("hashchange", () => {
-  if (window.location.hash === "#import" && currentUid) {
-    populateAccountSelect(currentUid, accountSelect);
+  if (window.location.hash === "#import") {
+    initImportPage();
+    if (currentUid) {
+      const accountSelect = document.getElementById("importAccountSelect");
+      if (accountSelect) populateAccountSelect(currentUid, accountSelect);
+    }
   }
 });
