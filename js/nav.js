@@ -13,7 +13,7 @@
  */
 
 /** All known page names (must match id="page-{name}" in index.html) */
-const PAGES = ['dashboard', 'budget', 'transactions', 'accounts', 'reports', 'import', 'settings'];
+const PAGES = ['dashboard', 'budget', 'transactions', 'accounts', 'categories', 'reports', 'import', 'settings', 'help'];
 const DEFAULT_PAGE = 'dashboard';
 
 /**
