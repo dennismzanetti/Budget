@@ -10,6 +10,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { initNav, navigateTo, getPage } from "./nav.js";
+import { loadCommits } from "./commits.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
@@ -25,7 +26,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ── DOM refs ──────────────────────────────────────────────
+// ── DOM refs ───────────────────────────────────────────────
 const loggedOutView   = document.getElementById("loggedOutView");
 const loggedInView    = document.getElementById("loggedInView");
 const heroLoginBtn    = document.getElementById("heroLoginBtn");
@@ -38,7 +39,7 @@ const themeToggle     = document.getElementById("themeToggle");
 const themeToggle2    = document.getElementById("themeToggle2");
 const root            = document.documentElement;
 
-// ── Theme ─────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────
 function setTheme(theme) {
   root.setAttribute("data-theme", theme);
 }
@@ -53,7 +54,7 @@ function initTheme() {
   });
 });
 
-// ── Auth ──────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────
 async function login() {
   const useRedirect = window.innerWidth < 768;
   if (useRedirect) {
@@ -84,6 +85,9 @@ function updateUI(user) {
 
   // Initialize nav after the logged-in view is visible
   initNav();
+
+  // If landing directly on settings, load commits immediately
+  if (getPage() === 'settings') loadCommits();
 }
 
 async function initAuth() {
@@ -105,7 +109,12 @@ logoutBtn.addEventListener("click", async () => {
   catch (error) { console.error("Logout failed:", error); alert(error.message); }
 });
 
-// ── Init ──────────────────────────────────────────────────
+// Load commits whenever the user navigates to the settings page
+window.addEventListener('hashchange', () => {
+  if (getPage() === 'settings') loadCommits();
+});
+
+// ── Init ──────────────────────────────────────────────────────
 export { db };
 initTheme();
 initAuth();
