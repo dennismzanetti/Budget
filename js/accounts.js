@@ -16,7 +16,7 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, addDoc, updateDoc,
-  deleteDoc, doc, serverTimestamp, query, orderBy
+  deleteDoc, doc, getDoc, setDoc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Lazily resolved — not called until the first exported function runs,
@@ -26,6 +26,9 @@ function getDb() {
   if (!_db) _db = getFirestore(getApp());
   return _db;
 }
+
+// Increment this any time DEFAULT_ACCOUNTS changes to force a re-seed.
+const SEED_VERSION = 2;
 
 // ── Default seed data ─────────────────────────────────────────────────
 const DEFAULT_ACCOUNTS = [
@@ -63,24 +66,37 @@ async function fetchAccounts() {
 // ── Seed ──────────────────────────────────────────────────────────────
 export async function seedAccountsIfEmpty(_uid) {
   try {
+    const metaRef = doc(getDb(), "meta", "accounts");
+    const metaSnap = await getDoc(metaRef);
+    const currentVersion = metaSnap.exists() ? (metaSnap.data().seedVersion ?? 0) : 0;
+
     const snap = await getDocs(accountsRef());
-    // Use snap.docs.some(d => d.data().name) instead of !snap.empty to avoid
-    // false positives from Firestore tombstoned (deleted) documents, which
-    // still appear in the snapshot but contain no real data.
     const hasRealData = snap.docs.some(d => d.data().name);
-    if (hasRealData) {
-      console.log("[accounts] accounts already exist, skipping seed");
+
+    if (hasRealData && currentVersion >= SEED_VERSION) {
+      console.log("[accounts] accounts up to date (v" + currentVersion + "), skipping seed");
       return;
     }
+
+    // Delete all existing docs (clears stale data and Firestore tombstones)
+    if (!snap.empty) {
+      await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+      console.log("[accounts] cleared " + snap.size + " existing account doc(s)");
+    }
+
+    // Re-seed with current DEFAULT_ACCOUNTS
     await Promise.all(
       DEFAULT_ACCOUNTS.map(a =>
         addDoc(accountsRef(), { ...a, isActive: true, createdAt: serverTimestamp() })
       )
     );
-    console.log("[accounts] seeded default accounts (global collection)");
+
+    // Record seed version so we don't re-seed on next load
+    await setDoc(metaRef, { seedVersion: SEED_VERSION });
+    console.log("[accounts] seeded default accounts (v" + SEED_VERSION + ")");
   } catch (err) {
     console.error("[accounts] seed error:", err);
-    throw err; // re-throw so app.js .catch() also fires
+    throw err;
   }
 }
 
