@@ -1,3 +1,15 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
   authDomain: "budget-2d6a0.firebaseapp.com",
@@ -7,32 +19,9 @@ const firebaseConfig = {
   appId: "1:309980875957:web:3c520e284b3ee1745302fc"
 };
 
-//Test Firestore connection
-import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const testDoc = await addDoc(collection(db, "test"), {
-  message: "Firebase connected!",
-  timestamp: new Date()
-});
-console.log("Test doc written with ID:", testDoc.id);
-
-
-
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-import { firebaseConfig } from "./firebase-config.js";
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 const loginBtn = document.getElementById("loginBtn");
@@ -92,7 +81,6 @@ async function initAuth() {
     await getRedirectResult(auth);
   } catch (error) {
     console.error("Redirect sign-in failed:", error);
-    alert(error.message);
   }
 
   onAuthStateChanged(auth, (user) => {
