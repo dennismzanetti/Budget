@@ -1,6 +1,9 @@
 /**
  * categories.js — Firestore categories layer + UI for the Categories page
  *
+ * Categories are stored in the global top-level "categories" collection and
+ * shared across all users (uid params are accepted for API compatibility but ignored).
+ *
  * Exports:
  *   initCategoriesPage(uid)                        — wires up the #categories page UI
  *   populateCategorySelect(uid, selectEl, opts)     — fills a <select> with category options
@@ -41,12 +44,13 @@ function nextAutoColor() {
   return color;
 }
 
-function categoriesRef(uid) {
-  return collection(getDb(), "users", uid, "categories");
+// Global categories collection — shared across all users
+function categoriesRef() {
+  return collection(getDb(), "categories");
 }
 
-async function fetchCategories(uid) {
-  const q = query(categoriesRef(uid), orderBy("name"));
+async function fetchCategories() {
+  const q = query(categoriesRef(), orderBy("name"));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
@@ -54,11 +58,11 @@ async function fetchCategories(uid) {
 // ── Public helpers ────────────────────────────────────────────────────
 
 /**
- * Returns a map of { categoryId -> { name, color } } for the given user.
- * Used by import and transaction pages to resolve IDs to display info.
+ * Returns a map of { categoryId -> { name, color } }.
+ * uid param retained for API compatibility but is not used.
  */
-export async function getCategoriesMap(uid) {
-  const cats = await fetchCategories(uid);
+export async function getCategoriesMap(_uid) {
+  const cats = await fetchCategories();
   const map = {};
   cats.forEach(c => { map[c.id] = { name: c.name, color: c.color || "#888888" }; });
   return map;
@@ -67,15 +71,16 @@ export async function getCategoriesMap(uid) {
 /**
  * Finds an existing active category by name (case-insensitive) or creates a new one.
  * Returns the category ID.
+ * uid param retained for API compatibility but is not used.
  */
-export async function ensureCategoryExists(uid, name) {
+export async function ensureCategoryExists(_uid, name) {
   const trimmed = name.trim();
   if (!trimmed) return null;
-  const cats = await fetchCategories(uid);
+  const cats = await fetchCategories();
   const existing = cats.find(c => c.name.trim().toLowerCase() === trimmed.toLowerCase());
   if (existing) return existing.id;
   // Auto-create
-  const ref = await addDoc(categoriesRef(uid), {
+  const ref = await addDoc(categoriesRef(), {
     name: trimmed,
     color: nextAutoColor(),
     isActive: true,
@@ -89,13 +94,14 @@ export async function ensureCategoryExists(uid, name) {
  * Populates a <select> element with categories.
  * opts.includeBlank (default true) — prepend a blank "Select category…" option
  * opts.currentId — pre-select this category ID
+ * uid param retained for API compatibility but is not used.
  */
-export async function populateCategorySelect(uid, selectEl, opts = {}) {
+export async function populateCategorySelect(_uid, selectEl, opts = {}) {
   if (!selectEl) return;
   const { includeBlank = true, currentId = null } = opts;
   selectEl.innerHTML = '<option value="">Loading categories\u2026</option>';
   try {
-    const cats = await fetchCategories(uid);
+    const cats = await fetchCategories();
     const options = cats
       .filter(c => c.isActive !== false)
       .map(c => `<option value="${c.id}"${c.id === currentId ? " selected" : ""}>${escHtml(c.name)}</option>`)
@@ -161,7 +167,7 @@ function renderDeleteConfirm(id) {
 }
 
 // ── Categories Page UI ────────────────────────────────────────────────
-export async function initCategoriesPage(uid) {
+export async function initCategoriesPage(_uid) {
   const listEl    = document.getElementById("categoriesList");
   const addForm   = document.getElementById("addCategoryForm");
   const addBtn    = document.getElementById("addCategoryBtn");
@@ -187,7 +193,7 @@ export async function initCategoriesPage(uid) {
   async function renderList() {
     listEl.innerHTML = '<li class="accounts-loading">Loading\u2026</li>';
     try {
-      const cats = await fetchCategories(uid);
+      const cats = await fetchCategories();
       if (cats.length === 0) {
         listEl.innerHTML = `
           <li class="accounts-empty">
@@ -231,7 +237,7 @@ export async function initCategoriesPage(uid) {
           const submitBtn = form.querySelector("[type='submit']");
           if (submitBtn) submitBtn.disabled = true;
           try {
-            await updateDoc(doc(getDb(), "users", uid, "categories", id), {
+            await updateDoc(doc(getDb(), "categories", id), {
               name,
               color: colorEl?.value || "#888888",
               updatedAt: serverTimestamp(),
@@ -257,7 +263,7 @@ export async function initCategoriesPage(uid) {
             listEl.querySelector(`[data-confirm-id="${id}"]`)?.remove();
           });
           listEl.querySelector(`.js-confirm-cat-delete[data-id="${id}"]`)?.addEventListener("click", async () => {
-            await deleteDoc(doc(getDb(), "users", uid, "categories", id));
+            await deleteDoc(doc(getDb(), "categories", id));
             renderList();
           });
         });
@@ -295,7 +301,7 @@ export async function initCategoriesPage(uid) {
     }
     saveBtn.disabled = true;
     try {
-      await addDoc(categoriesRef(uid), {
+      await addDoc(categoriesRef(), {
         name, color,
         isActive: true,
         createdAt: serverTimestamp(),
