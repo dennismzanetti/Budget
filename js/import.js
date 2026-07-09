@@ -19,7 +19,9 @@
  *   - Only "posted" rows are imported; "pending" rows are skipped.
  */
 
+import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
+  getFirestore,
   collection,
   query,
   where,
@@ -29,8 +31,9 @@ import {
   Timestamp,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { db } from "./app.js";
 import { ensureCategoryExists } from "./categories.js";
+
+const db = getFirestore(getApp());
 
 // ── CSV Parsing ───────────────────────────────────────────────────────────────
 
