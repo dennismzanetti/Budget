@@ -1,3 +1,17 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
+  authDomain: "budget-2d6a0.firebaseapp.com",
+  projectId: "budget-2d6a0",
+  storageBucket: "budget-2d6a0.firebasestorage.app",
+  messagingSenderId: "309980875957",
+  appId: "1:309980875957:web:3c520e284b3ee1745302fc"
+};
+
+
+
+
+
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
 import {
   getAuth,
