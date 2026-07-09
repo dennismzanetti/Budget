@@ -1,0 +1,255 @@
+/* ── Transactions Page ────────────────────────────────────────────────────── */
+
+/* Toolbar card */
+.txn-toolbar {
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem 0.875rem;
+}
+
+.txn-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.txn-filters .form-field {
+  flex: 1 1 130px;
+  min-width: 110px;
+  max-width: 200px;
+}
+
+.txn-filter-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.txn-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.txn-search-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.txn-search-icon {
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.txn-search-input {
+  padding-left: 2rem;
+  width: 100%;
+}
+
+/* Summary bar */
+.txn-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  padding: 0 0.125rem;
+}
+
+.txn-summary-sep {
+  color: var(--border);
+}
+
+.txn-summary--income {
+  color: var(--success, #437a22);
+  font-weight: 500;
+}
+
+.txn-summary--expense {
+  color: #c0392b;
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .txn-summary--expense {
+  color: #f08080;
+}
+
+/* Loading / empty */
+.txn-loading {
+  padding: 3rem 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.txn-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.txn-empty svg {
+  opacity: 0.3;
+}
+
+.txn-empty p {
+  font-size: 0.875rem;
+  max-width: 28ch;
+  line-height: 1.5;
+}
+
+/* Table wrapper */
+.txn-list-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.txn-table-wrap {
+  min-width: 600px;
+}
+
+.txn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.855rem;
+}
+
+.txn-th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.txn-row {
+  border-bottom: 1px solid var(--border);
+  transition: background 120ms ease;
+}
+
+.txn-row:hover {
+  background: var(--surface);
+}
+
+.txn-row:last-child {
+  border-bottom: none;
+}
+
+.txn-td {
+  padding: 0.6rem 0.75rem;
+  vertical-align: middle;
+  color: var(--text);
+}
+
+/* Column sizing */
+.txn-col-date     { width: 110px; white-space: nowrap; color: var(--muted); }
+.txn-col-desc     { min-width: 180px; }
+.txn-col-account  { width: 150px; }
+.txn-col-category { width: 160px; }
+.txn-col-amount   { width: 110px; text-align: right; }
+.txn-col-actions  { width: 44px;  text-align: center; }
+
+.txn-th.txn-col-amount { text-align: right; }
+
+/* Description cell */
+.txn-desc {
+  display: block;
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Muted cells */
+.txn-muted {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+/* Amount */
+.txn-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.txn-amount--expense { color: #c0392b; }
+.txn-amount--income  { color: var(--success, #437a22); }
+
+html[data-theme="dark"] .txn-amount--expense { color: #f08080; }
+html[data-theme="dark"] .txn-amount--income  { color: #6daa45; }
+
+/* Category inline select */
+.txn-category-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  width: 100%;
+  min-width: 120px;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  appearance: auto;
+}
+
+.txn-category-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.txn-category-select.txn-category-saved {
+  border-color: var(--success, #437a22);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success, #437a22) 15%, transparent);
+}
+
+/* Delete button — hidden until row hover */
+.js-delete-txn {
+  opacity: 0.25;
+  transition: opacity 150ms ease, color 150ms ease;
+}
+
+.txn-row:hover .js-delete-txn,
+.js-delete-txn:focus-visible {
+  opacity: 1;
+  color: #c0392b;
+}
+
+html[data-theme="dark"] .txn-row:hover .js-delete-txn {
+  color: #f08080;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .txn-filters .form-field {
+    flex: 1 1 calc(50% - 0.5rem);
+    max-width: none;
+  }
+
+  .txn-col-account {
+    display: none;
+  }
+
+  .txn-table-wrap {
+    min-width: 480px;
+  }
+}

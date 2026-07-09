@@ -8,4 +8,5 @@
 @import "./components/nav.css";
 @import "./components/commits.css";
 @import "./components/accounts.css";
+@import "./components/transactions.css";
 @import "./responsive.css";

@@ -12,7 +12,7 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebas
 import { initNav, navigateTo, getPage } from "./nav.js";
 import { loadCommits } from "./commits.js";
 import { seedAccountsIfEmpty, initAccountsPage } from "./accounts.js";
-import { initCategoriesPage } from "./categories.js";
+import { initTransactionsPage } from "./transactions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
@@ -41,7 +41,7 @@ const themeToggle     = document.getElementById("themeToggle");
 const themeToggle2    = document.getElementById("themeToggle2");
 const root            = document.documentElement;
 
-// ── Theme ───────────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────────
 function setTheme(theme) {
   root.setAttribute("data-theme", theme);
 }
@@ -85,15 +85,22 @@ function updateUI(user) {
   if (userNameEl) userNameEl.textContent = user.displayName || "User";
   if (userEmailEl) userEmailEl.textContent = user.email || "";
 
+  // Initialize nav after the logged-in view is visible
   initNav();
 
+  // Seed accounts on first login, then init the accounts page
   seedAccountsIfEmpty(user.uid)
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  if (getPage() === 'settings') loadCommits();
-  if (getPage() === 'accounts') initAccountsPage(user.uid);
-  if (getPage() === 'categories') initCategoriesPage(user.uid);
+  // Init transactions page
+  initTransactionsPage(user.uid)
+    .catch(err => console.error("[transactions] init failed:", err));
+
+  // If landing directly on a specific page, init immediately
+  if (getPage() === 'settings')     loadCommits();
+  if (getPage() === 'accounts')     initAccountsPage(user.uid);
+  if (getPage() === 'transactions') initTransactionsPage(user.uid);
 }
 
 async function initAuth() {
@@ -115,10 +122,11 @@ logoutBtn.addEventListener("click", async () => {
   catch (error) { console.error("Logout failed:", error); alert(error.message); }
 });
 
+// Re-init pages on hash navigation
 window.addEventListener('hashchange', () => {
-  if (getPage() === 'settings')    loadCommits();
-  if (getPage() === 'accounts')    initAccountsPage(auth.currentUser?.uid);
-  if (getPage() === 'categories')  initCategoriesPage(auth.currentUser?.uid);
+  if (getPage() === 'settings')     loadCommits();
+  if (getPage() === 'accounts')     initAccountsPage(auth.currentUser?.uid);
+  if (getPage() === 'transactions') initTransactionsPage(auth.currentUser?.uid);
 });
 
 // ── Init ───────────────────────────────────────────────────────────────
