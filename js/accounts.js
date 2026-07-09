@@ -2,9 +2,12 @@
  * accounts.js — Firestore accounts layer + UI for the Accounts page
  *
  * Exports:
- *   seedAccountsIfEmpty(uid)           — seeds default accounts on first login
+ *   seedAccountsIfEmpty(uid)           — seeds default accounts on first login (uid ignored, global collection)
  *   initAccountsPage(uid)              — wires up the #accounts page UI
  *   populateAccountSelect(uid, select) — fills a <select> with account options
+ *
+ * NOTE: Accounts are stored in the top-level "accounts" collection (not user-scoped).
+ *       uid params are kept for API compatibility but not used in Firestore paths.
  *
  * NOTE: db is resolved lazily (on first use) via getApp() so this module can be
  *       imported before initializeApp() runs in app.js without throwing no-app.
@@ -40,34 +43,34 @@ const TYPE_LABELS = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────
-function accountsRef(uid) {
-  return collection(getDb(), "users", uid, "accounts");
+function accountsRef() {
+  return collection(getDb(), "accounts");
 }
 
-async function fetchAccounts(uid) {
-  const q = query(accountsRef(uid), orderBy("createdAt"));
+async function fetchAccounts() {
+  const q = query(accountsRef(), orderBy("createdAt"));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 // ── Seed ──────────────────────────────────────────────────────────────
-export async function seedAccountsIfEmpty(uid) {
-  const snap = await getDocs(accountsRef(uid));
+export async function seedAccountsIfEmpty(_uid) {
+  const snap = await getDocs(accountsRef());
   if (!snap.empty) return; // already seeded
   await Promise.all(
     DEFAULT_ACCOUNTS.map(a =>
-      addDoc(accountsRef(uid), { ...a, isActive: true, createdAt: serverTimestamp() })
+      addDoc(accountsRef(), { ...a, isActive: true, createdAt: serverTimestamp() })
     )
   );
-  console.log("[accounts] seeded default accounts for", uid);
+  console.log("[accounts] seeded default accounts (global collection)");
 }
 
 // ── Populate a <select> element ───────────────────────────────────────
-export async function populateAccountSelect(uid, selectEl) {
+export async function populateAccountSelect(_uid, selectEl) {
   if (!selectEl) return;
   selectEl.innerHTML = '<option value="">Loading accounts\u2026</option>';
   try {
-    const accounts = await fetchAccounts(uid);
+    const accounts = await fetchAccounts();
     if (accounts.length === 0) {
       selectEl.innerHTML = '<option value="">No accounts found</option>';
       return;
@@ -85,7 +88,7 @@ export async function populateAccountSelect(uid, selectEl) {
 }
 
 // ── Accounts Page UI ──────────────────────────────────────────────────
-export async function initAccountsPage(uid) {
+export async function initAccountsPage(_uid) {
   const listEl    = document.getElementById("accountsList");
   const addForm   = document.getElementById("addAccountForm");
   const addBtn    = document.getElementById("addAccountBtn");
@@ -99,7 +102,7 @@ export async function initAccountsPage(uid) {
 
   async function renderList() {
     listEl.innerHTML = '<div class="accounts-loading">Loading\u2026</div>';
-    const accounts = await fetchAccounts(uid);
+    const accounts = await fetchAccounts();
     if (accounts.length === 0) {
       listEl.innerHTML = `
         <div class="empty-state">
@@ -132,7 +135,7 @@ export async function initAccountsPage(uid) {
     listEl.querySelectorAll(".js-toggle-active").forEach(btn => {
       btn.addEventListener("click", async () => {
         const isActive = btn.dataset.active === "true";
-        await updateDoc(doc(getDb(), "users", uid, "accounts", btn.dataset.id), { isActive: !isActive });
+        await updateDoc(doc(getDb(), "accounts", btn.dataset.id), { isActive: !isActive });
         renderList();
       });
     });
@@ -140,7 +143,7 @@ export async function initAccountsPage(uid) {
     listEl.querySelectorAll(".js-delete-account").forEach(btn => {
       btn.addEventListener("click", async () => {
         if (!confirm("Delete this account? This won't delete imported transactions.")) return;
-        await deleteDoc(doc(getDb(), "users", uid, "accounts", btn.dataset.id));
+        await deleteDoc(doc(getDb(), "accounts", btn.dataset.id));
         renderList();
       });
     });
@@ -169,7 +172,7 @@ export async function initAccountsPage(uid) {
       const inst = instInput?.value.trim();
       if (!name) { nameInput?.focus(); return; }
       saveBtn.disabled = true;
-      await addDoc(accountsRef(uid), {
+      await addDoc(accountsRef(), {
         name,
         type,
         institution: inst || "",
