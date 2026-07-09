@@ -29,17 +29,24 @@ function getDb() {
 
 // ── Default seed data ─────────────────────────────────────────────────
 const DEFAULT_ACCOUNTS = [
-  { name: "BofA Checking",    type: "checking", institution: "Bank of America" },
-  { name: "BofA Savings",     type: "savings",  institution: "Bank of America" },
-  { name: "BofA Credit Card", type: "credit",   institution: "Bank of America" },
+  { name: "Dennis Checking",             type: "checking",     institution: "" },
+  { name: "Joint Bill Pay",              type: "checking",     institution: "" },
+  { name: "Nicole Checking",             type: "checking",     institution: "" },
+  { name: "Long Term Savings",           type: "savings",      institution: "" },
+  { name: "Advantage Savings",           type: "savings",      institution: "" },
+  { name: "Travel Rewards Visa Signature", type: "credit",     institution: "" },
+  { name: "Mortgage",                    type: "mortgage",     institution: "" },
+  { name: "Toyota",                      type: "vehicle_loan", institution: "" },
 ];
 
 const TYPE_LABELS = {
-  checking:   "Checking",
-  savings:    "Savings",
-  credit:     "Credit Card",
-  investment: "Investment",
-  other:      "Other",
+  checking:     "Checking",
+  savings:      "Savings",
+  credit:       "Credit Card",
+  investment:   "Investment",
+  mortgage:     "Mortgage",
+  vehicle_loan: "Vehicle Loan",
+  other:        "Other",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -128,7 +135,7 @@ export async function initAccountsPage(_uid) {
         <div class="account-card" data-id="${a.id}">
           <div class="account-card__info">
             <span class="account-card__name">${a.name}</span>
-            <span class="account-card__meta">${TYPE_LABELS[a.type] ?? a.type} \u00b7 ${a.institution ?? ""}</span>
+            <span class="account-card__meta">${TYPE_LABELS[a.type] ?? a.type}${a.institution ? " \u00b7 " + a.institution : ""}</span>
           </div>
           <div class="account-card__actions">
             <button class="btn btn-ghost btn-sm js-toggle-active"
