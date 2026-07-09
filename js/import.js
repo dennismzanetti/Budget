@@ -62,11 +62,20 @@ function findHeaderRow(rows) {
   return -1;
 }
 
+/**
+ * Parse BofA date strings.
+ * Handles both MM/DD/YYYY (4-digit year) and MM/DD/YY (2-digit year).
+ * 2-digit years are interpreted as 2000+YY (BofA statements only go back ~7 years).
+ */
 function parseBofADate(str) {
   const parts = str.trim().split("/");
   if (parts.length !== 3) return null;
-  const [mm, dd, yyyy] = parts;
-  const d = new Date(Date.UTC(parseInt(yyyy, 10), parseInt(mm, 10) - 1, parseInt(dd, 10)));
+  const [mm, dd, yyRaw] = parts;
+  let yyyy = parseInt(yyRaw, 10);
+  if (isNaN(yyyy)) return null;
+  // Fix 2-digit year: "26" → 2026
+  if (yyyy < 100) yyyy = 2000 + yyyy;
+  const d = new Date(Date.UTC(yyyy, parseInt(mm, 10) - 1, parseInt(dd, 10)));
   return isNaN(d.getTime()) ? null : d;
 }
 
@@ -76,32 +85,55 @@ function dollarToCents(str) {
   return isNaN(val) ? null : Math.round(val * 100);
 }
 
+/**
+ * Build a collision-resistant sourceId.
+ * Uses pipe separators and percent-encodes the description so that
+ * a description containing "__" cannot produce an ambiguous ID.
+ */
 function buildSourceId(dateObj, description, amountCents) {
   const yyyy = dateObj.getUTCFullYear();
   const mm = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(dateObj.getUTCDate()).padStart(2, "0");
-  const safDesc = description.trim().replace(/\s+/g, " ");
-  return `bofa__${yyyy}${mm}${dd}__${safDesc}__${amountCents}`;
+  const safDesc = encodeURIComponent(description.trim().replace(/\s+/g, " "));
+  return `bofa|${yyyy}${mm}${dd}|${safDesc}|${amountCents}`;
 }
 
+/**
+ * Build a normalised column-name → index map.
+ * Handles BofA column name variants:
+ *   "Debits" / "Debit"  → "debits"
+ *   "Credits" / "Credit" → "credits"
+ *   "Running Bal." / "Running Bal" → "running bal."
+ */
 function buildColumnMap(headerRow) {
   const map = {};
   headerRow.forEach((col, i) => {
-    const key = col.trim().toLowerCase();
+    let key = col.trim().toLowerCase();
+    // Normalise singular → plural for amount columns
+    if (key === "debit")  key = "debits";
+    if (key === "credit") key = "credits";
+    // Normalise "running bal" (no period) → "running bal."
+    if (key === "running bal") key = "running bal.";
     map[key] = i;
   });
   return map;
 }
 
+/**
+ * Extract the transaction amount and type from a data row.
+ * Returns null for rows where no non-zero amount is present.
+ * Note: $0.00 entries are intentionally skipped — they represent
+ * informational rows (e.g. balance carry-forwards) with no real value.
+ */
 function extractAmount(row, colMap) {
   if (colMap["amount"] !== undefined) {
     const cents = dollarToCents(row[colMap["amount"]] || "");
-    if (cents === null) return null;
+    if (cents === null || cents === 0) return null;
     return { amountCents: Math.abs(cents), type: cents < 0 ? "expense" : "income" };
   }
   if (colMap["credits"] !== undefined || colMap["debits"] !== undefined) {
-    const creditStr = row[colMap["credits"]] || "";
-    const debitStr  = row[colMap["debits"]]  || "";
+    const creditStr = (colMap["credits"] !== undefined ? row[colMap["credits"]] : "") || "";
+    const debitStr  = (colMap["debits"]  !== undefined ? row[colMap["debits"]]  : "") || "";
     if (creditStr.trim() !== "") {
       const c = dollarToCents(creditStr);
       if (c !== null && c !== 0) return { amountCents: Math.abs(c), type: "income" };
@@ -139,7 +171,10 @@ export function parseBofACSV(csvText, accountId) {
     if (row.every(c => c.trim() === "")) { skippedRows++; return; }
 
     const dateStr = row[colMap["date"]] || "";
-    const description = row[colMap["description"]] || "";
+    const description = (row[colMap["description"]] || "").trim();
+
+    // Skip rows with no description — they are header continuations or balance rows
+    if (!description) { skippedRows++; return; }
 
     const dateObj = parseBofADate(dateStr);
     if (!dateObj) {
@@ -163,11 +198,11 @@ export function parseBofACSV(csvText, accountId) {
 
     parsed.push({
       date: Timestamp.fromDate(dateObj),
-      payee: description.trim(),
+      payee: description,
       amountCents: amountInfo.amountCents,
       type: amountInfo.type,
       accountId,
-      categoryId: null,          // resolved in importTransactions()
+      categoryId: null,           // resolved in importTransactions()
       _categoryName: categoryName, // temporary — stripped before Firestore write
       notes: "",
       transferGroupId: null,
@@ -186,6 +221,7 @@ export function parseBofACSV(csvText, accountId) {
 /**
  * Import parsed BofA transactions into Firestore for the given user.
  * - Resolves _categoryName to a real categoryId (auto-creates categories as needed).
+ * - Normalises category name keys to lowercase before lookup to prevent casing mismatches.
  * - Skips rows whose sourceId already exists (safe to re-import same file).
  */
 export async function importTransactions(uid, candidates) {
@@ -197,15 +233,25 @@ export async function importTransactions(uid, candidates) {
   let imported = 0;
 
   // ── Resolve category names → IDs (batch, deduplicated) ───────────────────
+  // Normalise all names to lowercase before deduplication so that
+  // "Shopping" and "shopping" are treated as the same category.
   const uniqueNames = [...new Set(
-    candidates.map(c => c._categoryName).filter(n => n && n.length > 0)
+    candidates
+      .map(c => c._categoryName ? c._categoryName.trim().toLowerCase() : "")
+      .filter(n => n.length > 0)
   )];
+  // nameToId keyed by lowercase name
   const nameToId = {};
-  for (const name of uniqueNames) {
+  for (const nameLower of uniqueNames) {
     try {
-      nameToId[name.toLowerCase()] = await ensureCategoryExists(uid, name);
+      // Pass the original casing for display, but store result under lowercase key.
+      // Find original-cased version from candidates for a nicer category label.
+      const originalName = candidates.find(
+        c => c._categoryName && c._categoryName.trim().toLowerCase() === nameLower
+      )?._categoryName?.trim() || nameLower;
+      nameToId[nameLower] = await ensureCategoryExists(uid, originalName);
     } catch (e) {
-      errors.push(`Category lookup failed for "${name}": ${e.message}`);
+      errors.push(`Category lookup failed for "${nameLower}": ${e.message}`);
     }
   }
 
@@ -236,10 +282,10 @@ export async function importTransactions(uid, candidates) {
         continue;
       }
 
-      // Resolve category ID from name, then strip the temp field
+      // Resolve category ID using lowercase key, then strip the temp field
       const { _categoryName, ...txnData } = txn;
       if (_categoryName) {
-        txnData.categoryId = nameToId[_categoryName.toLowerCase()] || null;
+        txnData.categoryId = nameToId[_categoryName.trim().toLowerCase()] ?? null;
       }
 
       const ref = doc(txnCol);
