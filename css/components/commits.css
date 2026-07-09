@@ -32,13 +32,14 @@
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .commits-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .commits-table thead th {
@@ -81,13 +82,13 @@
 .commits-table td:nth-child(4) { width: 10rem; white-space: nowrap; color: var(--muted); font-size: 0.8rem; }
 
 .commits-table th:nth-child(5),
-.commits-table td:nth-child(5) { width: 6rem; }
+.commits-table td:nth-child(5) { width: 26rem; white-space: nowrap; }
 
 .commit-msg {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 0;
+  max-width: 20rem;
 }
 
 .commit-author { font-weight: 500; }
