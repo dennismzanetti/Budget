@@ -6,9 +6,10 @@
  * .nav-item anchors and the bottom .tab-item anchors.
  *
  * Usage:
- *   import { initNav, navigateTo } from './nav.js';
+ *   import { initNav, navigateTo, getPage } from './nav.js';
  *   initNav();            // call once after DOM is ready
  *   navigateTo('budget'); // programmatic navigation
+ *   getPage();            // returns the currently active page name
  */
 
 /** All known page names (must match id="page-{name}" in index.html) */
@@ -72,6 +73,14 @@ export function navigateTo(page) {
     history.pushState(null, '', `#${page}`);
   }
   activatePage(page);
+}
+
+/**
+ * Returns the currently active page name derived from the URL hash.
+ * @returns {string}
+ */
+export function getPage() {
+  return pageFromHash();
 }
 
 /**
