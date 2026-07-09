@@ -1,7 +1,7 @@
 /**
  * nav.js — Hash-based client-side router
  *
- * Pages are <section id="page-{name}"> elements inside #main.
+ * Pages are <section id="{name}"> elements inside #main.
  * Navigation links carry [data-page="{name}"] on both the sidebar
  * .nav-item anchors and the bottom .tab-item anchors.
  *
@@ -12,7 +12,7 @@
  *   getPage();            // returns the currently active page name
  */
 
-/** All known page names (must match id="page-{name}" in index.html) */
+/** All known page names (must match id="{name}" in index.html) */
 const PAGES = ['dashboard', 'budget', 'transactions', 'accounts', 'categories', 'reports', 'import', 'settings', 'help'];
 const DEFAULT_PAGE = 'dashboard';
 
@@ -32,7 +32,7 @@ function pageFromHash() {
 function activatePage(page) {
   // Show / hide page sections
   PAGES.forEach((p) => {
-    const section = document.getElementById(`page-${p}`);
+    const section = document.getElementById(p);
     if (!section) return;
     if (p === page) {
       section.classList.remove('hidden');

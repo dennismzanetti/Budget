@@ -64,8 +64,8 @@ function categorySelect(currentCategoryId, rowId, catMap) {
 export async function initTransactionsPage(_uid) {
   console.debug("[txn] initTransactionsPage called, uid:", _uid);
 
-  const page = document.getElementById("page-transactions");
-  if (!page) { console.warn("[txn] #page-transactions element not found"); return; }
+  const page = document.getElementById("transactions");
+  if (!page) { console.warn("[txn] #transactions element not found"); return; }
 
   // ── DOM refs ──────────────────────────────────────────────────────
   const acctFilter    = document.getElementById("txnFilterAccount");

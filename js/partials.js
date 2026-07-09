@@ -4,15 +4,15 @@
  */
 export async function loadPartials() {
   const partials = [
-    { file: "login",        container: "loggedOutView",   method: "innerHTML" },
-    { file: "dashboard",    container: "page-dashboard",  method: "outerHTML" },
-    { file: "transactions", container: "page-transactions",method: "outerHTML" },
-    { file: "accounts",     container: "page-accounts",   method: "outerHTML" },
-    { file: "categories",   container: "page-categories",  method: "outerHTML" },
-    { file: "reports",      container: "page-reports",    method: "outerHTML" },
-    { file: "import",       container: "page-import",     method: "outerHTML" },
-    { file: "settings",     container: "page-settings",   method: "outerHTML" },
-    { file: "help",         container: "page-help",       method: "outerHTML" }
+    { file: "login",        container: "loggedOutView",  method: "innerHTML" },
+    { file: "dashboard",    container: "dashboard",      method: "outerHTML" },
+    { file: "transactions", container: "transactions",   method: "outerHTML" },
+    { file: "accounts",     container: "accounts",       method: "outerHTML" },
+    { file: "categories",   container: "categories",     method: "outerHTML" },
+    { file: "reports",      container: "reports",        method: "outerHTML" },
+    { file: "import",       container: "import",         method: "outerHTML" },
+    { file: "settings",     container: "settings",       method: "outerHTML" },
+    { file: "help",         container: "help",           method: "outerHTML" }
   ];
 
   await Promise.all(partials.map(async ({ file, container, method }) => {
