@@ -64,8 +64,9 @@ function categorySelect(currentCategoryId, rowId, catMap) {
 export async function initTransactionsPage(_uid) {
   console.debug("[txn] initTransactionsPage called, uid:", _uid);
 
-  const page = document.getElementById("transactions");
-  if (!page) { console.warn("[txn] #transactions page element not found"); return; }
+  // ── NOTE: The page element ID in HTML is "page-transactions" ─────
+  const page = document.getElementById("page-transactions");
+  if (!page) { console.warn("[txn] #page-transactions element not found"); return; }
 
   // ── DOM refs ──────────────────────────────────────────────────────
   const acctFilter    = document.getElementById("txnFilterAccount");
@@ -178,7 +179,7 @@ export async function initTransactionsPage(_uid) {
     console.debug("[txn] filtered count:", filtered.length);
     if (allTxns.length > 0 && filtered.length === 0) {
       console.warn("[txn] allTxns has data but filtered is empty — check filter values above");
-      if (allTxns.length > 0) console.debug("[txn] sample allTxns[0]:", JSON.stringify(allTxns[0]));
+      console.debug("[txn] sample allTxns[0]:", JSON.stringify(allTxns[0]));
     }
 
     // Summary
@@ -200,7 +201,6 @@ export async function initTransactionsPage(_uid) {
     tbody.innerHTML = filtered.map(t => {
       const isIncome = t.type === "income";
       const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "—");
-      const catName  = catMap[t.categoryId]?.name ?? "";
       return `
         <tr class="txn-row" data-id="${t.id}">
           <td class="txn-col-date">${escHtml(formatDate(t.date))}</td>
@@ -223,7 +223,7 @@ export async function initTransactionsPage(_uid) {
         </tr>`;
     }).join("");
 
-    // ── Category inline-save ─────────────────────────────────────────
+    // ── Category inline-save ──────────────────────────────────────────
     tbody.querySelectorAll(".txn-category-select").forEach(sel => {
       sel.addEventListener("change", async () => {
         const id    = sel.dataset.id;
