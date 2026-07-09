@@ -1,0 +1,53 @@
+.btn {
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  background: none;
+}
+
+.btn--full { width: 100%; margin-top: 0.5rem; }
+
+.btn--icon {
+  min-height: 36px;
+  padding: 0.4rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn--sm {
+  min-height: 36px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: background 150ms ease, color 150ms ease;
+}
+.btn--sm:hover { background: var(--surface-2); color: var(--text); }
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--primary-hover); }
+
+.btn-secondary {
+  background: var(--secondary);
+  color: var(--secondary-text);
+}
+
+.btn-ghost {
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--surface-2); }

@@ -1,0 +1,26 @@
+.hidden { display: none !important; }
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+}
+.skip-link:focus {
+  left: 1rem;
+  z-index: 100;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+}
+
+.subtle { color: var(--muted); margin: 0; }
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
