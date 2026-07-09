@@ -9,7 +9,6 @@ const BOT_LOGINS = ["web-flow", "github-actions[bot]", "dependabot[bot]"];
 
 /**
  * Returns true if a commit should be excluded (bot commit).
- * Checks both the committer login and name for bot indicators.
  */
 function isBot(commit) {
   const committerLogin = commit.committer?.login ?? "";
@@ -35,27 +34,27 @@ function formatDate(iso) {
   });
 }
 
-/** Renders the skeleton loading rows. */
+/** Renders skeleton loading rows. */
 function renderSkeleton(tbody) {
-  tbody.innerHTML = Array.from({ length: 5 }, (_, i) => `
+  tbody.innerHTML = Array.from({ length: 5 }, () => `
     <tr>
-      <td><span class="skeleton skeleton-text" style="width:1.5rem"></span></td>
-      <td><span class="skeleton skeleton-text" style="width:14rem"></span></td>
-      <td><span class="skeleton skeleton-text" style="width:8rem"></span></td>
-      <td><span class="skeleton skeleton-text" style="width:9rem"></span></td>
-      <td><span class="skeleton skeleton-text" style="width:20rem"></span></td>
+      <td><span class="skeleton" style="width:1.5rem"></span></td>
+      <td><span class="skeleton" style="width:14rem"></span></td>
+      <td><span class="skeleton" style="width:8rem"></span></td>
+      <td><span class="skeleton" style="width:9rem"></span></td>
+      <td><span class="skeleton" style="width:4.5rem"></span></td>
     </tr>
   `).join("");
 }
 
-/** Renders the commit rows into the table body. */
+/** Renders commit rows into the table body. */
 function renderCommits(tbody, commits) {
   if (commits.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="commits-empty">No commits found.</td></tr>`;
     return;
   }
   tbody.innerHTML = commits.map((c, i) => {
-    const msg    = c.commit.message.split("\n")[0]; // first line only
+    const msg    = c.commit.message.split("\n")[0];
     const author = c.commit.author.name;
     const date   = formatDate(c.commit.author.date);
     const sha    = c.sha;
@@ -67,7 +66,7 @@ function renderCommits(tbody, commits) {
         <td class="commit-author">${author}</td>
         <td class="commit-date">${date}</td>
         <td class="commit-sha">
-          <a href="${url}" target="_blank" rel="noopener noreferrer" class="sha-link">${sha}</a>
+          <a href="${url}" target="_blank" rel="noopener noreferrer" class="sha-link">${sha.slice(0, 7)}</a>
         </td>
       </tr>
     `;
@@ -86,8 +85,6 @@ function renderError(tbody, message) {
 export async function loadCommits() {
   const tbody = document.getElementById("commitsTbody");
   if (!tbody) return;
-
-  // Skip if already populated (avoid re-fetching on repeat nav)
   if (tbody.dataset.loaded === "true") return;
 
   renderSkeleton(tbody);
