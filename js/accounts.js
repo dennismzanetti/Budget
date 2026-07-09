@@ -2,29 +2,29 @@
  * accounts.js — Firestore accounts layer + UI for the Accounts page
  *
  * Exports:
- *   seedAccountsIfEmpty(uid)          — seeds default accounts on first login
- *   initAccountsPage(uid)             — wires up the #accounts page UI
- *   populateAccountSelect(uid, select) — fills an <select> with account options
+ *   seedAccountsIfEmpty(uid)           — seeds default accounts on first login
+ *   initAccountsPage(uid)              — wires up the #accounts page UI
+ *   populateAccountSelect(uid, select) — fills a <select> with account options
+ *
+ * NOTE: db is obtained here directly via getApp() (not imported from app.js)
+ *       to avoid a circular dependency: app.js → accounts.js → app.js.
+ *       Firebase deduplicates the app instance so both modules share the same db.
  */
 
-import { db } from "./app.js";
+import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  query,
-  orderBy
+  getFirestore, collection, getDocs, addDoc, updateDoc,
+  deleteDoc, doc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Grab the already-initialised Firebase app (initialised in app.js first)
+const db = getFirestore(getApp());
 
 // ── Default seed data ─────────────────────────────────────────────────
 const DEFAULT_ACCOUNTS = [
-  { name: "BofA Checking",     type: "checking",    institution: "Bank of America" },
-  { name: "BofA Savings",      type: "savings",     institution: "Bank of America" },
-  { name: "BofA Credit Card",  type: "credit",      institution: "Bank of America" },
+  { name: "BofA Checking",    type: "checking", institution: "Bank of America" },
+  { name: "BofA Savings",     type: "savings",  institution: "Bank of America" },
+  { name: "BofA Credit Card", type: "credit",   institution: "Bank of America" },
 ];
 
 const TYPE_LABELS = {
@@ -46,10 +46,10 @@ async function fetchAccounts(uid) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-// ── Seed ─────────────────────────────────────────────────────────────
+// ── Seed ──────────────────────────────────────────────────────────────
 export async function seedAccountsIfEmpty(uid) {
   const snap = await getDocs(accountsRef(uid));
-  if (!snap.empty) return;          // already seeded
+  if (!snap.empty) return; // already seeded
   await Promise.all(
     DEFAULT_ACCOUNTS.map(a =>
       addDoc(accountsRef(uid), { ...a, isActive: true, createdAt: serverTimestamp() })
@@ -68,7 +68,8 @@ export async function populateAccountSelect(uid, selectEl) {
       selectEl.innerHTML = '<option value="">No accounts found</option>';
       return;
     }
-    selectEl.innerHTML = '<option value="">Select account…</option>' +
+    selectEl.innerHTML =
+      '<option value="">Select account…</option>' +
       accounts
         .filter(a => a.isActive !== false)
         .map(a => `<option value="${a.id}">${a.name} (${TYPE_LABELS[a.type] ?? a.type})</option>`)
@@ -79,7 +80,7 @@ export async function populateAccountSelect(uid, selectEl) {
   }
 }
 
-// ── Accounts Page UI ─────────────────────────────────────────────────
+// ── Accounts Page UI ──────────────────────────────────────────────────
 export async function initAccountsPage(uid) {
   const listEl    = document.getElementById("accountsList");
   const addForm   = document.getElementById("addAccountForm");
@@ -90,7 +91,7 @@ export async function initAccountsPage(uid) {
   const typeInput = document.getElementById("newAccountType");
   const instInput = document.getElementById("newAccountInstitution");
 
-  if (!listEl) return;   // page not in DOM yet
+  if (!listEl) return; // page not in DOM yet
 
   async function renderList() {
     listEl.innerHTML = '<div class="accounts-loading">Loading…</div>';
@@ -110,7 +111,9 @@ export async function initAccountsPage(uid) {
           <span class="account-card__meta">${TYPE_LABELS[a.type] ?? a.type} · ${a.institution ?? ""}</span>
         </div>
         <div class="account-card__actions">
-          <button class="btn btn-ghost btn-sm js-toggle-active" data-id="${a.id}" data-active="${a.isActive !== false}" title="${a.isActive !== false ? 'Deactivate' : 'Activate'}">
+          <button class="btn btn-ghost btn-sm js-toggle-active"
+            data-id="${a.id}" data-active="${a.isActive !== false}"
+            title="${a.isActive !== false ? 'Deactivate' : 'Activate'}">
             ${a.isActive !== false
               ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 12H7"/><path d="M12 7l-5 5 5 5"/></svg> Deactivate'
               : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 12h10"/><path d="M12 17l5-5-5-5"/></svg> Activate'}
@@ -122,7 +125,6 @@ export async function initAccountsPage(uid) {
       </div>
     `).join("");
 
-    // Toggle active
     listEl.querySelectorAll(".js-toggle-active").forEach(btn => {
       btn.addEventListener("click", async () => {
         const isActive = btn.dataset.active === "true";
@@ -131,7 +133,6 @@ export async function initAccountsPage(uid) {
       });
     });
 
-    // Delete
     listEl.querySelectorAll(".js-delete-account").forEach(btn => {
       btn.addEventListener("click", async () => {
         if (!confirm("Delete this account? This won't delete imported transactions.")) return;
@@ -141,7 +142,7 @@ export async function initAccountsPage(uid) {
     });
   }
 
-  // ── Add account form ────────────────────────────────────────────────
+  // ── Add account form ─────────────────────────────────────────────────
   if (addBtn && addForm) {
     addBtn.addEventListener("click", () => {
       addForm.classList.remove("hidden");
