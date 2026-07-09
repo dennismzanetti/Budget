@@ -57,7 +57,11 @@ async function fetchAccounts() {
 export async function seedAccountsIfEmpty(_uid) {
   try {
     const snap = await getDocs(accountsRef());
-    if (!snap.empty) {
+    // Use snap.docs.some(d => d.data().name) instead of !snap.empty to avoid
+    // false positives from Firestore tombstoned (deleted) documents, which
+    // still appear in the snapshot but contain no real data.
+    const hasRealData = snap.docs.some(d => d.data().name);
+    if (hasRealData) {
       console.log("[accounts] accounts already exist, skipping seed");
       return;
     }
