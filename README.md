@@ -1,2 +1,0 @@
-# Budget
-a budget application
