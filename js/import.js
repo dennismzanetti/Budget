@@ -1,17 +1,22 @@
 /**
  * import.js — Bank of America CSV import engine
  *
- * Parses a BofA checking/savings/credit CSV export and writes
+ * Parses a BofA "Export Data" CSV export and writes
  * new transactions to Firestore under users/{uid}/transactions/.
  *
- * BofA CSV format:
- *   - Rows 1–6: metadata header (account name, date range, etc.)
- *   - Row 7:    column headers
- *   - Row 8+:   transaction data
+ * BofA CSV format (current export):
+ *   - Row 1: column headers (no metadata rows)
+ *   - Row 2+: transaction data
  *
- * Columns: Date, Description, Amount, Running Bal. (checking/savings)
- *          Date, Description, Reference Number, Credits, Debits (credit card variant)
- *          The credit card format may also include a "Category" column.
+ * Columns: Status, Date, Original Description, Split Type, Category,
+ *          Currency, Amount, User Description, Memo, Classification,
+ *          Account Name, Simple Description
+ *
+ * Notes:
+ *   - File starts with a UTF-8 BOM (\uFEFF) — stripped before parsing.
+ *   - Amount is a single signed column: negative = expense, positive = income.
+ *   - Simple Description is used as payee (cleaner merchant name).
+ *   - Only "posted" rows are imported; "pending" rows are skipped.
  */
 
 import {
@@ -31,7 +36,9 @@ import { ensureCategoryExists } from "./categories.js";
 
 function parseCSV(text) {
   const rows = [];
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  // Strip UTF-8 BOM if present
+  const cleaned = text.replace(/^\uFEFF/, "");
+  const lines = cleaned.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   for (const line of lines) {
     if (line.trim() === "") continue;
     const cols = [];
@@ -57,15 +64,24 @@ function parseCSV(text) {
 
 function findHeaderRow(rows) {
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i][0] && rows[i][0].trim().toLowerCase() === "date") return i;
+    // Check any column for "date" — handles BOM and leading blank columns
+    if (rows[i].some(col => col.trim().toLowerCase() === "date")) return i;
   }
   return -1;
+}
+
+function buildColumnMap(headerRow) {
+  const map = {};
+  headerRow.forEach((col, i) => {
+    map[col.trim().toLowerCase()] = i;
+  });
+  return map;
 }
 
 /**
  * Parse BofA date strings.
  * Handles both MM/DD/YYYY (4-digit year) and MM/DD/YY (2-digit year).
- * 2-digit years are interpreted as 2000+YY (BofA statements only go back ~7 years).
+ * 2-digit years are interpreted as 2000+YY.
  */
 function parseBofADate(str) {
   const parts = str.trim().split("/");
@@ -73,7 +89,6 @@ function parseBofADate(str) {
   const [mm, dd, yyRaw] = parts;
   let yyyy = parseInt(yyRaw, 10);
   if (isNaN(yyyy)) return null;
-  // Fix 2-digit year: "26" → 2026
   if (yyyy < 100) yyyy = 2000 + yyyy;
   const d = new Date(Date.UTC(yyyy, parseInt(mm, 10) - 1, parseInt(dd, 10)));
   return isNaN(d.getTime()) ? null : d;
@@ -87,8 +102,7 @@ function dollarToCents(str) {
 
 /**
  * Build a collision-resistant sourceId.
- * Uses pipe separators and percent-encodes the description so that
- * a description containing "__" cannot produce an ambiguous ID.
+ * Uses pipe separators and percent-encodes the description.
  */
 function buildSourceId(dateObj, description, amountCents) {
   const yyyy = dateObj.getUTCFullYear();
@@ -98,58 +112,10 @@ function buildSourceId(dateObj, description, amountCents) {
   return `bofa|${yyyy}${mm}${dd}|${safDesc}|${amountCents}`;
 }
 
-/**
- * Build a normalised column-name → index map.
- * Handles BofA column name variants:
- *   "Debits" / "Debit"  → "debits"
- *   "Credits" / "Credit" → "credits"
- *   "Running Bal." / "Running Bal" → "running bal."
- */
-function buildColumnMap(headerRow) {
-  const map = {};
-  headerRow.forEach((col, i) => {
-    let key = col.trim().toLowerCase();
-    // Normalise singular → plural for amount columns
-    if (key === "debit")  key = "debits";
-    if (key === "credit") key = "credits";
-    // Normalise "running bal" (no period) → "running bal."
-    if (key === "running bal") key = "running bal.";
-    map[key] = i;
-  });
-  return map;
-}
-
-/**
- * Extract the transaction amount and type from a data row.
- * Returns null for rows where no non-zero amount is present.
- * Note: $0.00 entries are intentionally skipped — they represent
- * informational rows (e.g. balance carry-forwards) with no real value.
- */
-function extractAmount(row, colMap) {
-  if (colMap["amount"] !== undefined) {
-    const cents = dollarToCents(row[colMap["amount"]] || "");
-    if (cents === null || cents === 0) return null;
-    return { amountCents: Math.abs(cents), type: cents < 0 ? "expense" : "income" };
-  }
-  if (colMap["credits"] !== undefined || colMap["debits"] !== undefined) {
-    const creditStr = (colMap["credits"] !== undefined ? row[colMap["credits"]] : "") || "";
-    const debitStr  = (colMap["debits"]  !== undefined ? row[colMap["debits"]]  : "") || "";
-    if (creditStr.trim() !== "") {
-      const c = dollarToCents(creditStr);
-      if (c !== null && c !== 0) return { amountCents: Math.abs(c), type: "income" };
-    }
-    if (debitStr.trim() !== "") {
-      const d = dollarToCents(debitStr);
-      if (d !== null && d !== 0) return { amountCents: Math.abs(d), type: "expense" };
-    }
-  }
-  return null;
-}
-
 // ── Main Parse Function ───────────────────────────────────────────────────────
 
 /**
- * Parse a BofA CSV file contents into an array of candidate transaction objects.
+ * Parse a BofA Export Data CSV into an array of candidate transaction objects.
  * Category names from the CSV are preserved as `_categoryName` for resolution
  * during the Firestore write phase.
  */
@@ -170,12 +136,11 @@ export function parseBofACSV(csvText, accountId) {
   dataRows.forEach((row, i) => {
     if (row.every(c => c.trim() === "")) { skippedRows++; return; }
 
+    // Only import posted transactions; skip pending
+    const status = (row[colMap["status"]] || "").trim().toLowerCase();
+    if (status && status !== "posted") { skippedRows++; return; }
+
     const dateStr = row[colMap["date"]] || "";
-    const description = (row[colMap["description"]] || "").trim();
-
-    // Skip rows with no description — they are header continuations or balance rows
-    if (!description) { skippedRows++; return; }
-
     const dateObj = parseBofADate(dateStr);
     if (!dateObj) {
       parseErrors.push(`Row ${headerIdx + 2 + i}: invalid date "${dateStr}" — skipped.`);
@@ -183,26 +148,30 @@ export function parseBofACSV(csvText, accountId) {
       return;
     }
 
-    const amountInfo = extractAmount(row, colMap);
-    if (!amountInfo || amountInfo.amountCents === 0) {
-      skippedRows++;
-      return;
-    }
+    // Prefer Simple Description for payee; fall back to Original Description
+    const simpleDesc = (colMap["simple description"] !== undefined ? row[colMap["simple description"]] : "").trim();
+    const originalDesc = (colMap["original description"] !== undefined ? row[colMap["original description"]] : "").trim();
+    const payee = simpleDesc || originalDesc;
+    if (!payee) { skippedRows++; return; }
 
-    // Read category name from CSV if present (credit card format may have it)
-    const categoryName = (colMap["category"] !== undefined)
-      ? (row[colMap["category"]] || "").trim()
-      : "";
+    // Amount is a single signed column: negative = expense, positive = income
+    const amountStr = row[colMap["amount"]] || "";
+    const cents = dollarToCents(amountStr);
+    if (cents === null || cents === 0) { skippedRows++; return; }
 
-    const sourceId = buildSourceId(dateObj, description, amountInfo.amountCents);
+    const amountCents = Math.abs(cents);
+    const type = cents < 0 ? "expense" : "income";
+
+    const categoryName = (colMap["category"] !== undefined ? row[colMap["category"]] : "").trim();
+    const sourceId = buildSourceId(dateObj, payee, amountCents);
 
     parsed.push({
       date: Timestamp.fromDate(dateObj),
-      payee: description,
-      amountCents: amountInfo.amountCents,
-      type: amountInfo.type,
+      payee,
+      amountCents,
+      type,
       accountId,
-      categoryId: null,           // resolved in importTransactions()
+      categoryId: null,            // resolved in importTransactions()
       _categoryName: categoryName, // temporary — stripped before Firestore write
       notes: "",
       transferGroupId: null,
@@ -233,19 +202,14 @@ export async function importTransactions(uid, candidates) {
   let imported = 0;
 
   // ── Resolve category names → IDs (batch, deduplicated) ───────────────────
-  // Normalise all names to lowercase before deduplication so that
-  // "Shopping" and "shopping" are treated as the same category.
   const uniqueNames = [...new Set(
     candidates
       .map(c => c._categoryName ? c._categoryName.trim().toLowerCase() : "")
       .filter(n => n.length > 0)
   )];
-  // nameToId keyed by lowercase name
   const nameToId = {};
   for (const nameLower of uniqueNames) {
     try {
-      // Pass the original casing for display, but store result under lowercase key.
-      // Find original-cased version from candidates for a nicer category label.
       const originalName = candidates.find(
         c => c._categoryName && c._categoryName.trim().toLowerCase() === nameLower
       )?._categoryName?.trim() || nameLower;
@@ -282,7 +246,6 @@ export async function importTransactions(uid, candidates) {
         continue;
       }
 
-      // Resolve category ID using lowercase key, then strip the temp field
       const { _categoryName, ...txnData } = txn;
       if (_categoryName) {
         txnData.categoryId = nameToId[_categoryName.trim().toLowerCase()] ?? null;
