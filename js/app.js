@@ -13,6 +13,7 @@ import { initNav, navigateTo, getPage } from "./nav.js";
 import { loadCommits } from "./commits.js";
 import { seedAccountsIfEmpty, initAccountsPage } from "./accounts.js";
 import { initTransactionsPage } from "./transactions.js";
+import { loadPartials } from "./partials.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
@@ -28,33 +29,24 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ── DOM refs ──────────────────────────────────────────────────────────
-const loggedOutView   = document.getElementById("loggedOutView");
-const loggedInView    = document.getElementById("loggedInView");
-const heroLoginBtn    = document.getElementById("heroLoginBtn");
-const logoutBtn       = document.getElementById("logoutBtn");
-const userPhoto       = document.getElementById("userPhoto");
-const userPhotoLarge  = document.getElementById("userPhotoLarge");
-const userNameEl      = document.getElementById("userNameSettings");
-const userEmailEl     = document.getElementById("userEmailSettings");
-const themeToggle     = document.getElementById("themeToggle");
-const themeToggle2    = document.getElementById("themeToggle2");
-const root            = document.documentElement;
-
 // ── Theme ─────────────────────────────────────────────────────────────
 function setTheme(theme) {
-  root.setAttribute("data-theme", theme);
+  document.documentElement.setAttribute("data-theme", theme);
 }
 function initTheme() {
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   setTheme(prefersDark ? "dark" : "light");
 }
-[themeToggle, themeToggle2].forEach(btn => {
-  btn && btn.addEventListener("click", () => {
-    const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    setTheme(next);
+
+function bindThemeToggles() {
+  ["themeToggle", "themeToggle2"].forEach(id => {
+    const btn = document.getElementById(id);
+    btn && btn.addEventListener("click", () => {
+      const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      setTheme(next);
+    });
   });
-});
+}
 
 // ── Auth ───────────────────────────────────────────────────────────────
 async function login() {
@@ -71,6 +63,13 @@ async function logout() {
 }
 
 function updateUI(user) {
+  const loggedOutView = document.getElementById("loggedOutView");
+  const loggedInView  = document.getElementById("loggedInView");
+  const userPhoto     = document.getElementById("userPhoto");
+  const userPhotoLarge = document.getElementById("userPhotoLarge");
+  const userNameEl    = document.getElementById("userNameSettings");
+  const userEmailEl   = document.getElementById("userEmailSettings");
+
   if (!user) {
     loggedOutView.classList.remove("hidden");
     loggedInView.classList.add("hidden");
@@ -85,19 +84,15 @@ function updateUI(user) {
   if (userNameEl) userNameEl.textContent = user.displayName || "User";
   if (userEmailEl) userEmailEl.textContent = user.email || "";
 
-  // Initialize nav after the logged-in view is visible
   initNav();
 
-  // Seed accounts on first login, then init the accounts page
   seedAccountsIfEmpty(user.uid)
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  // Init transactions page
   initTransactionsPage(user.uid)
     .catch(err => console.error("[transactions] init failed:", err));
 
-  // If landing directly on a specific page, init immediately
   if (getPage() === 'settings')     loadCommits();
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
@@ -112,17 +107,6 @@ async function initAuth() {
   onAuthStateChanged(auth, updateUI);
 }
 
-heroLoginBtn.addEventListener("click", async () => {
-  try { await login(); }
-  catch (error) { console.error("Login failed:", error); alert(error.message); }
-});
-
-logoutBtn.addEventListener("click", async () => {
-  try { await logout(); }
-  catch (error) { console.error("Logout failed:", error); alert(error.message); }
-});
-
-// Re-init pages on hash navigation
 window.addEventListener('hashchange', () => {
   if (getPage() === 'settings')     loadCommits();
   if (getPage() === 'accounts')     initAccountsPage(auth.currentUser?.uid);
@@ -131,5 +115,25 @@ window.addEventListener('hashchange', () => {
 
 // ── Init ───────────────────────────────────────────────────────────────
 export { db };
-initTheme();
-initAuth();
+
+(async () => {
+  initTheme();
+  await loadPartials();
+  bindThemeToggles();
+
+  // Wire login/logout buttons (now present after partials load)
+  const heroLoginBtn = document.getElementById("heroLoginBtn");
+  const logoutBtn    = document.getElementById("logoutBtn");
+
+  heroLoginBtn && heroLoginBtn.addEventListener("click", async () => {
+    try { await login(); }
+    catch (error) { console.error("Login failed:", error); alert(error.message); }
+  });
+
+  logoutBtn && logoutBtn.addEventListener("click", async () => {
+    try { await logout(); }
+    catch (error) { console.error("Logout failed:", error); alert(error.message); }
+  });
+
+  await initAuth();
+})();

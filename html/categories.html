@@ -1,0 +1,30 @@
+<section class="page hidden" id="page-categories" aria-hidden="true">
+  <div class="page-header">
+    <h2 class="page-title">Categories</h2>
+    <button id="addCategoryBtn" class="btn btn-primary" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Category
+    </button>
+  </div>
+
+  <div id="addCategoryForm" class="card hidden" aria-label="Add new category">
+    <h3 class="card-title">New Category</h3>
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="form-label" for="newCategoryName">Category name <span aria-hidden="true">*</span></label>
+        <input id="newCategoryName" class="form-input" type="text" placeholder="e.g. Groceries" required />
+      </div>
+      <div class="form-field form-field--color">
+        <label class="form-label" for="newCategoryColor">Color</label>
+        <input id="newCategoryColor" class="form-input form-input--color" type="color" value="#4f98a3" />
+      </div>
+    </div>
+    <div id="addCategoryError" class="form-error hidden" role="alert"></div>
+    <div class="form-actions">
+      <button id="cancelAddCategory" class="btn btn-ghost" type="button">Cancel</button>
+      <button id="saveCategoryBtn" class="btn btn-primary" type="button">Save Category</button>
+    </div>
+  </div>
+
+  <ul id="categoriesList" class="accounts-list" aria-live="polite"></ul>
+</section>

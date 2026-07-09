@@ -1,0 +1,86 @@
+<section class="page hidden" id="page-transactions" aria-hidden="true">
+  <div class="page-header">
+    <h2 class="page-title">Transactions</h2>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="card txn-filters" aria-label="Transaction filters">
+    <div class="txn-filters-row">
+      <div class="form-field">
+        <label class="form-label" for="txnFilterAccount">Account</label>
+        <select id="txnFilterAccount" class="form-input">
+          <option value="">All Accounts</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label" for="txnFilterCategory">Category</label>
+        <select id="txnFilterCategory" class="form-input">
+          <option value="">All Categories</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label" for="txnFilterType">Type</label>
+        <select id="txnFilterType" class="form-input">
+          <option value="">All Types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label" for="txnFilterDateFrom">From</label>
+        <input id="txnFilterDateFrom" class="form-input" type="date" />
+      </div>
+      <div class="form-field">
+        <label class="form-label" for="txnFilterDateTo">To</label>
+        <input id="txnFilterDateTo" class="form-input" type="date" />
+      </div>
+      <div class="form-field txn-search-field">
+        <label class="form-label" for="txnSearch">Search</label>
+        <input id="txnSearch" class="form-input" type="search" placeholder="Description or category…" />
+      </div>
+      <div class="form-field form-field--action">
+        <button id="txnClearFilters" class="btn btn-ghost btn--sm" type="button">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary bar -->
+  <div class="txn-summary" aria-live="polite">
+    <span class="txn-summary-item">
+      <span class="txn-summary-label">Transactions</span>
+      <span id="txnSummaryCount" class="txn-summary-value">—</span>
+    </span>
+    <span class="txn-summary-divider" aria-hidden="true"></span>
+    <span class="txn-summary-item">
+      <span class="txn-summary-label">Income</span>
+      <span id="txnSummaryIncome" class="txn-summary-value txn-summary-value--income">—</span>
+    </span>
+    <span class="txn-summary-divider" aria-hidden="true"></span>
+    <span class="txn-summary-item">
+      <span class="txn-summary-label">Expenses</span>
+      <span id="txnSummaryExpense" class="txn-summary-value txn-summary-value--expense">—</span>
+    </span>
+  </div>
+
+  <!-- Transactions table -->
+  <div class="card txn-table-card">
+    <div class="txn-table-wrap">
+      <table class="txn-table" aria-label="Transactions">
+        <thead>
+          <tr>
+            <th scope="col" class="txn-col-date">Date</th>
+            <th scope="col" class="txn-col-desc">Description</th>
+            <th scope="col" class="txn-col-account txn-hide-mobile">Account</th>
+            <th scope="col" class="txn-col-category">Category</th>
+            <th scope="col" class="txn-col-type txn-hide-mobile">Type</th>
+            <th scope="col" class="txn-col-amount">Amount</th>
+            <th scope="col" class="txn-col-actions"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="txnTableBody" aria-live="polite">
+          <tr><td colspan="7" class="txn-loading">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
