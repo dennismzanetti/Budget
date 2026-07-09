@@ -94,14 +94,14 @@ export async function initTransactionsPage(_uid) {
     acctFilter.value = "";
   }
 
-  // ── Account name cache (user-scoped subcollection) ─────────────
+  // ── Account name cache (global accounts collection) ───────────────
   let accountMap = {};
-  let userAccountIds = [];
+  let allAccountIds = [];
   try {
-    const snap = await getDocs(collection(getDb(), "users", _uid, "accounts"));
+    const snap = await getDocs(collection(getDb(), "accounts"));
     snap.docs.forEach(d => {
       accountMap[d.id] = d.data().name ?? d.id;
-      userAccountIds.push(d.id);
+      allAccountIds.push(d.id);
     });
     console.debug("[txn] accountMap loaded:", Object.keys(accountMap).length, "accounts", accountMap);
   } catch (e) {
@@ -133,8 +133,8 @@ export async function initTransactionsPage(_uid) {
     tbody.innerHTML = `<tr><td colspan="7" class="txn-loading">Loading\u2026</td></tr>`;
     console.debug("[txn] loadTransactions — querying global transactions collection");
 
-    if (userAccountIds.length === 0) {
-      console.warn("[txn] no accounts found for user — cannot load transactions");
+    if (allAccountIds.length === 0) {
+      console.warn("[txn] no accounts found — cannot load transactions");
       tbody.innerHTML = `<tr><td colspan="7" class="txn-empty">No accounts found. Please add an account first.</td></tr>`;
       return;
     }
@@ -145,8 +145,8 @@ export async function initTransactionsPage(_uid) {
       const allDocs = [];
 
       // Firestore "in" queries are limited to 30 values; chunk if needed
-      for (let i = 0; i < userAccountIds.length; i += IN_LIMIT) {
-        const chunk = userAccountIds.slice(i, i + IN_LIMIT);
+      for (let i = 0; i < allAccountIds.length; i += IN_LIMIT) {
+        const chunk = allAccountIds.slice(i, i + IN_LIMIT);
         const q = query(txnCol, where("accountId", "in", chunk), orderBy("date", "desc"));
         const snap = await getDocs(q);
         snap.docs.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
