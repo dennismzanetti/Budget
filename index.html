@@ -171,6 +171,8 @@
         <!-- SETTINGS PAGE -->
         <section class="page hidden" id="page-settings">
           <h2 class="page-title">Settings</h2>
+
+          <!-- Profile card -->
           <section class="card profile-card">
             <img id="userPhotoLarge" class="avatar" src="https://placehold.co/72x72" alt="Signed-in user profile photo" width="72" height="72" />
             <div>
@@ -179,6 +181,43 @@
               <p id="userEmailSettings" class="subtle">user@example.com</p>
             </div>
           </section>
+
+          <!-- Recent commits card -->
+          <section class="card commits-card">
+            <div class="commits-header">
+              <div>
+                <p class="eyebrow">Repository</p>
+                <h3>Recent Commits</h3>
+              </div>
+              <a
+                href="https://github.com/dennismzanetti/Budget/commits/main"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-ghost btn--sm"
+                aria-label="View all commits on GitHub"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                View on GitHub
+              </a>
+            </div>
+            <div class="commits-table-wrap">
+              <table class="commits-table" aria-label="Last 10 commits">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Message</th>
+                    <th scope="col">Author</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">SHA</th>
+                  </tr>
+                </thead>
+                <tbody id="commitsTbody">
+                  <!-- Populated by js/commits.js -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
         </section>
 
       </main>
@@ -194,7 +233,7 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         <span>Budget</span>
       </a>
-      <a href="#budget" class="tab-item" data-page="transactions" aria-current="false">
+      <a href="#transactions" class="tab-item" data-page="transactions" aria-current="false">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
         <span>Transactions</span>
       </a>

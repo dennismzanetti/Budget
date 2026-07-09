@@ -7,6 +7,8 @@
  *   navigateTo('budget'); // programmatic navigation
  */
 
+import { loadCommits } from './commits.js';
+
 export const PAGES = [
   "dashboard",
   "budget",
@@ -52,6 +54,11 @@ export function navigateTo(page) {
     item.classList.toggle("active", item.dataset.page === page);
     item.setAttribute("aria-current", item.dataset.page === page ? "page" : "false");
   });
+
+  // Load commits when settings page is activated
+  if (page === "settings") {
+    loadCommits();
+  }
 }
 
 /**
