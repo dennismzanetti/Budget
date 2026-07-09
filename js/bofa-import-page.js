@@ -3,24 +3,17 @@
  *
  * Wires up:
  *  - Drag-and-drop + click-to-browse file selection
- *  - Account dropdown populated from Firestore
+ *  - Account dropdown populated from Firestore via accounts.js
  *  - Import button → calls importBofAFile() with progress feedback
  *  - Results card with stats and any parse/write errors
- *  - "Import another file" reset flow
+ *  - “Import another file” reset flow
  */
 
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { db } from "./app.js";
 import { importBofAFile } from "./import.js";
+import { populateAccountSelect } from "./accounts.js";
 
-// ── DOM refs ───────────────────────────────────────────────────────────────
+// ── DOM refs ──────────────────────────────────────────────────────────
 const dropZone         = document.getElementById("importDropZone");
 const fileInput        = document.getElementById("importFileInput");
 const filePreview      = document.getElementById("importFilePreview");
@@ -43,48 +36,18 @@ const resultErrors     = document.getElementById("importResultErrors");
 const importAgainBtn   = document.getElementById("importAgainBtn");
 const uploadCard       = document.querySelector(".import-upload-card");
 
-// ── State ──────────────────────────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────────────────────
 let selectedFile = null;
 let currentUid   = null;
 
-// ── Auth ──────────────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────
 const auth = getAuth();
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUid = user.uid;
-    loadAccounts(user.uid);
+    populateAccountSelect(user.uid, accountSelect);
   }
 });
-
-// ── Load accounts into dropdown ───────────────────────────────────────────
-async function loadAccounts(uid) {
-  accountSelect.innerHTML = '<option value="">Loading accounts…</option>';
-  try {
-    const snap = await getDocs(
-      query(
-        collection(db, "users", uid, "accounts"),
-        where("isActive", "==", true),
-        orderBy("name")
-      )
-    );
-    if (snap.empty) {
-      accountSelect.innerHTML = '<option value="">No accounts found — add one first</option>';
-      return;
-    }
-    accountSelect.innerHTML = '<option value="">Select an account…</option>';
-    snap.forEach((docSnap) => {
-      const d = docSnap.data();
-      const opt = document.createElement("option");
-      opt.value = docSnap.id;
-      opt.textContent = `${d.name}${d.institution ? ` — ${d.institution}` : ''}`;
-      accountSelect.appendChild(opt);
-    });
-  } catch (e) {
-    // If accounts collection doesn't exist yet, show a placeholder
-    accountSelect.innerHTML = '<option value="">No accounts yet — add one first</option>';
-    console.warn("Could not load accounts:", e.message);
-  }
-}
 
 // ── File selection helpers ────────────────────────────────────────────────
 function formatBytes(bytes) {
@@ -130,7 +93,7 @@ function hideError() {
   errorBanner.textContent = "";
 }
 
-// ── Drop zone events ──────────────────────────────────────────────────────
+// ── Drop zone events ────────────────────────────────────────────────
 dropZone.addEventListener("click", () => fileInput.click());
 dropZone.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
@@ -161,7 +124,7 @@ fileClearBtn.addEventListener("click", (e) => {
 
 accountSelect.addEventListener("change", updateSubmitState);
 
-// ── Progress helpers ──────────────────────────────────────────────────────
+// ── Progress helpers ────────────────────────────────────────────────
 const STEPS = { read: 15, parse: 45, write: 85, done: 100 };
 
 function setProgress(step, message) {
@@ -171,7 +134,7 @@ function setProgress(step, message) {
   progressMsg.textContent = message;
 }
 
-// ── Import flow ───────────────────────────────────────────────────────────
+// ── Import flow ───────────────────────────────────────────────────────
 submitBtn.addEventListener("click", async () => {
   if (!selectedFile || !accountSelect.value || !currentUid) return;
 
@@ -198,7 +161,7 @@ submitBtn.addEventListener("click", async () => {
   }
 });
 
-// ── Results display ───────────────────────────────────────────────────────
+// ── Results display ──────────────────────────────────────────────────────
 function showResult({ imported, duplicates, skippedRows, parseErrors, writeErrors }) {
   progressCard.classList.add("hidden");
   resultCard.classList.remove("hidden");
@@ -221,8 +184,8 @@ function showResult({ imported, duplicates, skippedRows, parseErrors, writeError
 
   // Stats grid
   const stats = [
-    { label: "Imported",   value: imported,    cls: "stat--green" },
-    { label: "Duplicates", value: duplicates,   cls: "stat--muted" },
+    { label: "Imported",     value: imported,        cls: "stat--green" },
+    { label: "Duplicates",   value: duplicates,      cls: "stat--muted" },
     { label: "Skipped rows", value: skippedRows ?? 0, cls: "stat--muted" },
   ];
   resultStats.innerHTML = stats.map(s =>
@@ -241,7 +204,7 @@ function showResult({ imported, duplicates, skippedRows, parseErrors, writeError
   }
 }
 
-// ── Reset / import again ──────────────────────────────────────────────────
+// ── Reset / import again ────────────────────────────────────────────────
 importAgainBtn.addEventListener("click", () => {
   clearFile();
   hideError();
@@ -255,9 +218,9 @@ importAgainBtn.addEventListener("click", () => {
   resultStats.innerHTML = "";
 });
 
-// ── Init: load accounts when page is first visited ────────────────────────
+// ── Reload accounts dropdown when navigating to import page ───────────────
 window.addEventListener("hashchange", () => {
   if (window.location.hash === "#import" && currentUid) {
-    loadAccounts(currentUid);
+    populateAccountSelect(currentUid, accountSelect);
   }
 });
