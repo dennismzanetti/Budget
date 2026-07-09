@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Budget App</title>
-  <meta name="description" content="Household budget app shell with Firebase Google login." />
+  <meta name="description" content="Household budget app with Firebase Google login." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -13,108 +13,207 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 48 48" role="img" aria-label="Budget App logo">
-          <rect x="6" y="8" width="36" height="32" rx="10" fill="none" stroke="currentColor" stroke-width="3"></rect>
-          <path d="M16 29c2-4 4-6 8-6s6 2 8 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
-          <path d="M18 18h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
-        </svg>
-      </div>
-      <div>
-        <h1>Budget App</h1>
-        <p class="subtle">Household budget starter shell</p>
-      </div>
-    </div>
-
-    <div class="topbar-actions">
-      <button id="themeToggle" class="btn btn-ghost" type="button" aria-label="Toggle theme">
-        Theme
-      </button>
-      <button id="loginBtn" class="btn btn-primary" type="button">
-        Sign in with Google
-      </button>
-      <button id="logoutBtn" class="btn btn-secondary hidden" type="button">
-        Sign out
-      </button>
-    </div>
-  </header>
-
-  <main id="main" class="page-shell">
-    <section id="loggedOutView" class="hero card">
-      <div class="hero-copy">
-        <p class="eyebrow">Secure access</p>
-        <h2>Your budgeting workspace starts here.</h2>
-        <p>
-          Sign in with your Google account to load your personal budget data from Firebase.
-        </p>
-        <button id="heroLoginBtn" class="btn btn-primary" type="button">
-          Continue with Google
-        </button>
-      </div>
-      <div class="hero-panel">
-        <div class="mini-stat">
-          <span class="mini-stat-label">Monthly plan</span>
-          <strong>$0.00</strong>
+  <!-- LOGGED OUT VIEW -->
+  <div id="loggedOutView">
+    <header class="topbar topbar--centered">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img" aria-label="Budget App logo">
+            <rect x="6" y="8" width="36" height="32" rx="10" fill="none" stroke="currentColor" stroke-width="3"></rect>
+            <path d="M16 29c2-4 4-6 8-6s6 2 8 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+            <path d="M18 18h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+          </svg>
         </div>
-        <div class="mini-stat">
-          <span class="mini-stat-label">Spent</span>
-          <strong>$0.00</strong>
-        </div>
-        <div class="mini-stat">
-          <span class="mini-stat-label">Remaining</span>
-          <strong>$0.00</strong>
-        </div>
-      </div>
-    </section>
-
-    <section id="loggedInView" class="hidden">
-      <section class="card profile-card">
-        <img id="userPhoto" class="avatar" src="https://placehold.co/72x72" alt="Signed-in user profile photo" width="72" height="72" />
         <div>
-          <p class="eyebrow">Signed in</p>
-          <h2 id="userName">User name</h2>
-          <p id="userEmail" class="subtle">user@example.com</p>
+          <h1>Budget App</h1>
+          <p class="subtle">Household budget tracker</p>
         </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="themeToggle" class="btn btn-ghost" type="button" aria-label="Toggle theme">Theme</button>
+      </div>
+    </header>
+    <main class="auth-shell">
+      <section class="auth-card card">
+        <div class="brand-mark brand-mark--lg" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img" aria-label="Budget App logo">
+            <rect x="6" y="8" width="36" height="32" rx="10" fill="none" stroke="currentColor" stroke-width="3"></rect>
+            <path d="M16 29c2-4 4-6 8-6s6 2 8 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+            <path d="M18 18h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+          </svg>
+        </div>
+        <p class="eyebrow">Secure access</p>
+        <h2>Your budgeting workspace</h2>
+        <p class="subtle">Sign in with your Google account to access your personal budget data.</p>
+        <button id="heroLoginBtn" class="btn btn-primary btn--full" type="button">Continue with Google</button>
       </section>
+    </main>
+  </div>
 
-      <section class="dashboard-grid">
-        <article class="card">
-          <p class="eyebrow">Accounts</p>
-          <h3>Connected balances</h3>
-          <p class="subtle">Placeholder for checking, savings, and credit accounts.</p>
-        </article>
+  <!-- LOGGED IN VIEW -->
+  <div id="loggedInView" class="hidden app-layout">
 
-        <article class="card">
-          <p class="eyebrow">Budget</p>
-          <h3>Category targets</h3>
-          <p class="subtle">Placeholder for groceries, utilities, mortgage, and subscriptions.</p>
-        </article>
+    <!-- TOPBAR -->
+    <header class="app-topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img" aria-label="Budget App logo">
+            <rect x="6" y="8" width="36" height="32" rx="10" fill="none" stroke="currentColor" stroke-width="3"></rect>
+            <path d="M16 29c2-4 4-6 8-6s6 2 8 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+            <path d="M18 18h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+          </svg>
+        </div>
+        <span class="brand-name">Budget</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="themeToggle2" class="btn btn-ghost btn--icon" type="button" aria-label="Toggle theme">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <img id="userPhoto" class="avatar avatar--sm" src="https://placehold.co/36x36" alt="User profile" width="36" height="36" />
+        <button id="logoutBtn" class="btn btn-ghost" type="button">Sign out</button>
+      </div>
+    </header>
 
-        <article class="card">
-          <p class="eyebrow">Transactions</p>
-          <h3>Recent activity</h3>
-          <p class="subtle">Placeholder for imported or manual transactions.</p>
-        </article>
+    <!-- SIDEBAR + CONTENT -->
+    <div class="app-body">
 
-        <article class="card">
-          <p class="eyebrow">Reporting</p>
-          <h3>Monthly summary</h3>
-          <p class="subtle">Placeholder for totals, trends, and cash flow summaries.</p>
-        </article>
-      </section>
-    </section>
+      <!-- SIDEBAR (desktop) -->
+      <nav class="sidebar" aria-label="Main navigation">
+        <ul class="nav-list" role="list">
+          <li>
+            <a href="#dashboard" class="nav-item" data-page="dashboard">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="#budget" class="nav-item" data-page="budget">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span>Budget</span>
+            </a>
+          </li>
+          <li>
+            <a href="#transactions" class="nav-item" data-page="transactions">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+              <span>Transactions</span>
+            </a>
+          </li>
+          <li>
+            <a href="#accounts" class="nav-item" data-page="accounts">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              <span>Accounts</span>
+            </a>
+          </li>
+          <li>
+            <a href="#reports" class="nav-item" data-page="reports">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+              <span>Reports</span>
+            </a>
+          </li>
+          <li>
+            <a href="#settings" class="nav-item" data-page="settings">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Settings</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
 
-    <section class="card setup-card">
-      <p class="eyebrow">Next setup</p>
-      <h2>After deployment</h2>
-      <ul>
-        <li>Enable Google sign-in in Firebase Authentication.</li>
-        <li>Add your GitHub Pages domain to Firebase authorized domains.</li>
-      </ul>
-    </section>
-  </main>
+      <!-- MAIN CONTENT -->
+      <main id="main" class="app-content">
+
+        <!-- DASHBOARD PAGE -->
+        <section class="page" id="page-dashboard">
+          <h2 class="page-title">Dashboard</h2>
+          <div class="dashboard-grid">
+            <article class="card">
+              <p class="eyebrow">Accounts</p>
+              <h3>Connected balances</h3>
+              <p class="subtle">Placeholder for checking, savings, and credit accounts.</p>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Budget</p>
+              <h3>Category targets</h3>
+              <p class="subtle">Placeholder for groceries, utilities, mortgage, and subscriptions.</p>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Transactions</p>
+              <h3>Recent activity</h3>
+              <p class="subtle">Placeholder for imported or manual transactions.</p>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Reporting</p>
+              <h3>Monthly summary</h3>
+              <p class="subtle">Placeholder for totals, trends, and cash flow summaries.</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- BUDGET PAGE -->
+        <section class="page hidden" id="page-budget">
+          <h2 class="page-title">Budget</h2>
+          <div class="card"><p class="subtle">Budget categories coming soon.</p></div>
+        </section>
+
+        <!-- TRANSACTIONS PAGE -->
+        <section class="page hidden" id="page-transactions">
+          <h2 class="page-title">Transactions</h2>
+          <div class="card"><p class="subtle">Transaction list coming soon.</p></div>
+        </section>
+
+        <!-- ACCOUNTS PAGE -->
+        <section class="page hidden" id="page-accounts">
+          <h2 class="page-title">Accounts</h2>
+          <div class="card"><p class="subtle">Account balances coming soon.</p></div>
+        </section>
+
+        <!-- REPORTS PAGE -->
+        <section class="page hidden" id="page-reports">
+          <h2 class="page-title">Reports</h2>
+          <div class="card"><p class="subtle">Monthly reports coming soon.</p></div>
+        </section>
+
+        <!-- SETTINGS PAGE -->
+        <section class="page hidden" id="page-settings">
+          <h2 class="page-title">Settings</h2>
+          <section class="card profile-card">
+            <img id="userPhotoLarge" class="avatar" src="https://placehold.co/72x72" alt="Signed-in user profile photo" width="72" height="72" />
+            <div>
+              <p class="eyebrow">Signed in</p>
+              <h3 id="userNameSettings">User name</h3>
+              <p id="userEmailSettings" class="subtle">user@example.com</p>
+            </div>
+          </section>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- BOTTOM TAB BAR (mobile) -->
+    <nav class="bottom-tabs" aria-label="Mobile navigation">
+      <a href="#dashboard" class="tab-item" data-page="dashboard">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="#budget" class="tab-item" data-page="budget">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Budget</span>
+      </a>
+      <a href="#transactions" class="tab-item" data-page="transactions">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span>Transactions</span>
+      </a>
+      <a href="#reports" class="tab-item" data-page="reports">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span>Reports</span>
+      </a>
+      <a href="#settings" class="tab-item" data-page="settings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+  </div>
 
   <script type="module" src="./app.js"></script>
 </body>
