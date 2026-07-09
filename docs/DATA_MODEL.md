@@ -1,186 +1,134 @@
 # Budget App — Data Model
 
-## Overview
+All user data lives under a single Firestore path:
 
-The Budget app uses **Cloud Firestore** (Firebase project: `budget-2d6a0`) as its backend database. All data is scoped per authenticated user via Google Sign-In. The top-level Firestore structure follows a `users/{userId}/...` hierarchy so each user's data is fully isolated.
+```
+users/{userId}/
+```
+
+Every sub-collection or document below is scoped to the authenticated user's UID.
 
 ---
 
-## Firestore Collection Structure
+## Collections & Documents
 
-```
-users/
-  {userId}/
-    profile/          ← single document with user metadata
-    accounts/         ← bank/credit/cash accounts
-    categories/       ← budget categories (income & expense)
-    transactions/     ← individual financial transactions
-    budgets/          ← monthly budget targets per category
-    settings/         ← user preferences and app configuration
-```
+### `users/{userId}` — Profile Document
 
----
-
-## Document Schemas
-
-### `users/{userId}/profile`
-
-A single document storing the user's profile, synced from Google Auth on first login.
+A **single document** created on first sign-in via Google Auth.
 
 | Field | Type | Description |
-|-------|------|-------------|
+|---|---|---|
 | `uid` | `string` | Firebase Auth UID |
-| `displayName` | `string` | Google display name |
-| `email` | `string` | Google account email |
+| `displayName` | `string` | From Google Auth |
+| `email` | `string` | From Google Auth |
 | `photoURL` | `string` | Google profile photo URL |
-| `createdAt` | `timestamp` | Account creation date |
-| `lastLoginAt` | `timestamp` | Most recent sign-in |
+| `createdAt` | `timestamp` | `serverTimestamp()` on first login |
+| `lastLoginAt` | `timestamp` | Updated on every login |
 
 ---
 
-### `users/{userId}/accounts/{accountId}`
+### `users/{userId}/accounts/{accountId}` — Accounts
 
-Represents a financial account (checking, savings, credit card, cash, etc.).
+Represents a financial account (bank, credit card, cash, etc.).
 
 | Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | Auto-generated document ID |
-| `name` | `string` | Account name (e.g., "Chase Checking") |
+|---|---|---|
+| `name` | `string` | e.g. "Chase Checking" |
 | `type` | `string` | `checking` \| `savings` \| `credit` \| `cash` \| `investment` |
 | `institution` | `string` | Bank or institution name |
-| `balance` | `number` | Current balance in cents (avoids float rounding) |
-| `currency` | `string` | ISO 4217 currency code (default: `"USD"`) |
-| `isActive` | `boolean` | Whether the account is visible/active |
-| `createdAt` | `timestamp` | When the account was added |
-| `updatedAt` | `timestamp` | Last modification time |
-
-**Notes:**
-- Balances are stored as **integer cents** (e.g., `$12.50` → `1250`) to avoid floating-point precision issues.
-- Credit accounts: `balance` represents the amount owed (positive = debt).
+| `balanceCents` | `number` | Current balance in **integer cents** (avoids float errors) |
+| `currency` | `string` | ISO 4217 code, default `"USD"` |
+| `isActive` | `boolean` | Soft-delete flag; `false` = archived |
+| `createdAt` | `timestamp` | `serverTimestamp()` |
+| `updatedAt` | `timestamp` | `serverTimestamp()` on every write |
 
 ---
 
-### `users/{userId}/categories/{categoryId}`
+### `users/{userId}/categories/{categoryId}` — Categories
 
-Budget categories for classifying transactions.
+Income and expense categories. Supports one level of subcategories via `parentId`.
 
 | Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | Auto-generated document ID |
-| `name` | `string` | Category name (e.g., "Groceries") |
+|---|---|---|
+| `name` | `string` | e.g. "Groceries" |
 | `type` | `string` | `income` \| `expense` |
-| `icon` | `string` | Lucide icon name (e.g., `"shopping-cart"`) |
-| `color` | `string` | Hex color code for UI display |
-| `parentId` | `string \| null` | ID of parent category (null = top-level) |
-| `isDefault` | `boolean` | Whether this is a system-provided default category |
-| `isActive` | `boolean` | Whether the category is available for use |
-| `createdAt` | `timestamp` | Creation time |
-
-**Default Categories (seeded on first login):**
-
-*Expense:* Housing, Groceries, Dining, Transportation, Utilities, Healthcare, Entertainment, Clothing, Personal Care, Education, Savings, Miscellaneous
-
-*Income:* Salary, Freelance, Investment, Gift, Other Income
+| `parentId` | `string \| null` | ID of parent category, or `null` for top-level |
+| `icon` | `string` | Lucide icon name (e.g. `"shopping-cart"`) |
+| `color` | `string` | Hex color for charts (e.g. `"#01696f"`) |
+| `isActive` | `boolean` | Soft-delete flag |
+| `createdAt` | `timestamp` | `serverTimestamp()` |
 
 ---
 
-### `users/{userId}/transactions/{transactionId}`
+### `users/{userId}/transactions/{transactionId}` — Transactions
 
-Individual financial transactions — the core data entity.
+Core financial record. Each row is one debit, credit, or transfer leg.
 
 | Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | Auto-generated document ID |
-| `accountId` | `string` | Reference to `accounts/{accountId}` |
-| `categoryId` | `string` | Reference to `categories/{categoryId}` |
+|---|---|---|
+| `date` | `timestamp` | Transaction date (user-selected) |
+| `amountCents` | `number` | Amount in **integer cents**; always positive |
 | `type` | `string` | `income` \| `expense` \| `transfer` |
-| `amount` | `number` | Transaction amount in cents (always positive) |
-| `description` | `string` | User-provided note or merchant name |
-| `date` | `timestamp` | Transaction date (not necessarily entry date) |
-| `payee` | `string \| null` | Payee or payer name |
-| `isRecurring` | `boolean` | Whether this is part of a recurring series |
-| `recurringId` | `string \| null` | ID linking to a recurring rule (future feature) |
-| `transferGroupId` | `string \| null` | Links the two sides of a transfer together |
-| `tags` | `array<string>` | Optional user-defined tags |
-| `createdAt` | `timestamp` | When the record was created |
-| `updatedAt` | `timestamp` | Last modification time |
+| `accountId` | `string` | Reference to `accounts/{accountId}` |
+| `categoryId` | `string \| null` | Reference to `categories/{categoryId}` |
+| `payee` | `string` | Merchant or payee name |
+| `notes` | `string` | Optional free-text memo |
+| `transferGroupId` | `string \| null` | Shared ID linking the two legs of a transfer |
+| `isCleared` | `boolean` | Reconciliation flag |
+| `isActive` | `boolean` | Soft-delete flag |
+| `createdAt` | `timestamp` | `serverTimestamp()` |
+| `updatedAt` | `timestamp` | `serverTimestamp()` on every write |
 
-**Transfer transactions:**
-A transfer between accounts creates **two** transaction documents:
-- One `expense` from the source account
-- One `income` on the destination account
-- Both share a common `transferGroupId` field to link them.
+> **Transfer rule:** A transfer between two accounts creates **two** transaction documents sharing the same `transferGroupId`. The source account leg is `type: "transfer"` with a negative effect on balance; the destination leg is `type: "transfer"` with a positive effect.
 
 ---
 
-### `users/{userId}/budgets/{budgetId}`
+### `users/{userId}/budgets/{budgetId}` — Budgets
 
-Monthly budget targets for a category.
+Monthly spending target per category.
 
 | Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | Auto-generated document ID |
+|---|---|---|
 | `categoryId` | `string` | Reference to `categories/{categoryId}` |
-| `month` | `string` | Budget period in `YYYY-MM` format (e.g., `"2026-07"`) |
-| `targetAmount` | `number` | Budgeted amount in cents |
-| `rollover` | `boolean` | Whether unspent funds roll over to next month |
-| `createdAt` | `timestamp` | Creation time |
-| `updatedAt` | `timestamp` | Last modification time |
+| `month` | `string` | ISO month string `"YYYY-MM"` (e.g. `"2026-07"`) |
+| `amountCents` | `number` | Monthly target in **integer cents** |
+| `rollover` | `boolean` | Whether unspent balance rolls into next month |
+| `createdAt` | `timestamp` | `serverTimestamp()` |
+| `updatedAt` | `timestamp` | `serverTimestamp()` on every write |
 
-**Querying pattern:** To load all budgets for a given month, query with `where("month", "==", "2026-07")`.
+> **Index required:** Composite index on `categoryId ASC, month DESC` for efficient monthly budget queries.
 
 ---
 
-### `users/{userId}/settings`
+### `users/{userId}/settings` — Settings Document
 
-A single document storing user preferences.
+A **single document** holding user preferences.
 
 | Field | Type | Description |
-|-------|------|-------------|
+|---|---|---|
+| `currency` | `string` | ISO 4217 code, default `"USD"` |
 | `theme` | `string` | `"light"` \| `"dark"` \| `"system"` |
-| `currency` | `string` | Default ISO 4217 currency code (e.g., `"USD"`) |
-| `startOfMonth` | `number` | Day of month budget periods start (default: `1`) |
-| `defaultAccountId` | `string \| null` | Pre-selected account for new transactions |
-| `notifications` | `boolean` | Whether to enable budget alert notifications |
-| `updatedAt` | `timestamp` | Last settings update |
+| `startOfMonth` | `number` | Day of month the budget period starts (1–28) |
+| `startOfWeek` | `number` | `0` = Sunday, `1` = Monday |
+| `updatedAt` | `timestamp` | `serverTimestamp()` on every write |
 
 ---
 
-## Relationships Diagram
+## Conventions
 
-```
-users/{userId}
-│
-├── profile (1 doc)
-│
-├── accounts (collection)
-│       └── {accountId}
-│
-├── categories (collection)
-│       └── {categoryId}
-│               └── parentId → {categoryId}  (self-reference for subcategories)
-│
-├── transactions (collection)
-│       └── {transactionId}
-│               ├── accountId  → accounts/{accountId}
-│               └── categoryId → categories/{categoryId}
-│
-├── budgets (collection)
-│       └── {budgetId}
-│               └── categoryId → categories/{categoryId}
-│
-└── settings (1 doc)
-```
+- **All monetary values are stored as integer cents.** Display layer divides by 100. This eliminates floating-point rounding errors.
+- **Soft deletes only.** Set `isActive: false` instead of calling `.delete()`. This preserves historical data and makes undo trivial.
+- **All timestamps use `serverTimestamp()`.** Never use `Date.now()` or `new Date()` for Firestore writes.
+- **IDs are Firestore auto-IDs** (`.doc()` with no argument) unless noted otherwise.
 
 ---
 
 ## Firestore Security Rules (Recommended)
 
-```javascript
+```js
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own data
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -190,22 +138,11 @@ service cloud.firestore {
 
 ---
 
-## Indexing Recommendations
-
-Firestore requires composite indexes for multi-field queries. Create the following in the Firebase console:
+## Recommended Composite Indexes
 
 | Collection | Fields | Order | Purpose |
-|------------|--------|-------|---------|
-| `transactions` | `accountId`, `date` | `date DESC` | Transactions by account, sorted by date |
-| `transactions` | `categoryId`, `date` | `date DESC` | Transactions by category, sorted by date |
-| `transactions` | `type`, `date` | `date DESC` | Income vs. expense reports |
-| `budgets` | `month`, `categoryId` | — | Budget lookup by period |
-
----
-
-## Conventions
-
-- **Timestamps:** All `timestamp` fields use Firestore `serverTimestamp()` on create/update — never client-side `Date.now()`.
-- **Amounts:** All monetary values stored as **integer cents**. Display layer divides by 100. This prevents floating-point rounding errors.
-- **Soft deletes:** Records are never hard-deleted. Use `isActive: false` to hide without data loss.
-- **IDs:** All document IDs are Firestore auto-generated unless noted otherwise.
+|---|---|---|---|
+| `transactions` | `accountId`, `date` | ASC, DESC | Transactions by account, newest first |
+| `transactions` | `categoryId`, `date` | ASC, DESC | Transactions by category |
+| `transactions` | `date`, `type` | DESC, ASC | Filtered transaction list |
+| `budgets` | `categoryId`, `month` | ASC, DESC | Monthly budget lookup |
