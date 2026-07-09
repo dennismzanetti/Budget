@@ -42,7 +42,7 @@ function renderSkeleton(tbody) {
       <td><span class="skeleton" style="width:14rem"></span></td>
       <td><span class="skeleton" style="width:8rem"></span></td>
       <td><span class="skeleton" style="width:9rem"></span></td>
-      <td><span class="skeleton" style="width:24rem"></span></td>
+      <td><span class="skeleton" style="width:5rem"></span></td>
     </tr>
   `).join("");
 }
@@ -58,6 +58,7 @@ function renderCommits(tbody, commits) {
     const author = c.commit.author.name;
     const date   = formatDate(c.commit.author.date);
     const sha    = c.sha;
+    const shortSha = sha.slice(0, 7);
     const url    = c.html_url;
     return `
       <tr>
@@ -66,7 +67,7 @@ function renderCommits(tbody, commits) {
         <td class="commit-author">${author}</td>
         <td class="commit-date">${date}</td>
         <td class="commit-sha">
-          <a href="${url}" target="_blank" rel="noopener noreferrer" class="sha-link">${sha}</a>
+          <a href="${url}" target="_blank" rel="noopener noreferrer" class="sha-link" title="${sha}">${shortSha}</a>
         </td>
       </tr>
     `;

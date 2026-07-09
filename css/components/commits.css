@@ -39,7 +39,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
-  table-layout: auto;
+  table-layout: fixed;
 }
 
 .commits-table thead th {
@@ -68,12 +68,11 @@
   color: var(--text);
 }
 
-/* Column sizing */
+/* Column sizing — fixed layout so message column fills remaining space */
 .commits-table th:nth-child(1),
 .commits-table td:nth-child(1) { width: 2.5rem; color: var(--muted); text-align: center; }
 
-.commits-table th:nth-child(2),
-.commits-table td:nth-child(2) { width: auto; }
+/* Column 2 (message) takes all remaining width — no explicit width needed with table-layout:fixed */
 
 .commits-table th:nth-child(3),
 .commits-table td:nth-child(3) { width: 8rem; white-space: nowrap; }
@@ -82,13 +81,13 @@
 .commits-table td:nth-child(4) { width: 10rem; white-space: nowrap; color: var(--muted); font-size: 0.8rem; }
 
 .commits-table th:nth-child(5),
-.commits-table td:nth-child(5) { width: 26rem; white-space: nowrap; }
+.commits-table td:nth-child(5) { width: 6rem; white-space: nowrap; }
 
+/* Message truncation — works with table-layout:fixed */
 .commit-msg {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 20rem;
 }
 
 .commit-author { font-weight: 500; }
@@ -102,6 +101,7 @@
   border-radius: 5px;
   transition: background 150ms ease;
   white-space: nowrap;
+  text-decoration: none;
 }
 .sha-link:hover {
   background: color-mix(in srgb, var(--primary) 20%, transparent);
