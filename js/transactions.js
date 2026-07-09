@@ -5,7 +5,7 @@
  *   initTransactionsPage(uid) — wires up the #transactions page UI
  *
  * Schema (written by import.js):
- *   Collection : users/{uid}/transactions
+ *   Collection : transactions (global)
  *   Fields     : date (Timestamp), payee (string), amountCents (int),
  *                type ("expense"|"income"), accountId, categoryId,
  *                notes, sourceId, isActive, isCleared, source
@@ -93,20 +93,13 @@ export async function initTransactionsPage(_uid) {
   // ── Account name cache ────────────────────────────────────────────
   let accountMap = {};
   try {
-    const snap = await getDocs(collection(getDb(), "users", _uid, "accounts"));
+    const snap = await getDocs(collection(getDb(), "accounts"));
     snap.docs.forEach(d => { accountMap[d.id] = d.data().name ?? d.id; });
   } catch (e) {
-    // Fall back to root accounts collection for compatibility
-    try {
-      const snap = await getDocs(collection(getDb(), "accounts"));
-      snap.docs.forEach(d => { accountMap[d.id] = d.data().name ?? d.id; });
-    } catch (e2) {
-      console.warn("[transactions] could not load account names", e2);
-    }
+    console.warn("[transactions] could not load account names", e);
   }
 
   // ── Category map: { id -> { name, color } } ───────────────────────
-  // FIX #4: resolve categoryId to a display name via getCategoriesMap()
   let catMap = {};
   try {
     catMap = await getCategoriesMap(_uid);
@@ -129,8 +122,7 @@ export async function initTransactionsPage(_uid) {
   async function loadTransactions() {
     tbody.innerHTML = `<tr><td colspan="7" class="txn-loading">Loading\u2026</td></tr>`;
     try {
-      // FIX #1: query users/{uid}/transactions — not root-level "transactions"
-      const txnCol = collection(getDb(), "users", _uid, "transactions");
+      const txnCol = collection(getDb(), "transactions");
       const q = query(txnCol, orderBy("date", "desc"));
       const snap = await getDocs(q);
       allTxns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -152,15 +144,12 @@ export async function initTransactionsPage(_uid) {
 
     const filtered = allTxns.filter(t => {
       if (acctVal && t.accountId !== acctVal) return false;
-      // FIX #4: filter by categoryId instead of category string
       if (catVal  && t.categoryId !== catVal) return false;
-      // FIX #5: use the "type" field ("income"/"expense") — not amount sign
       if (typeVal && t.type !== typeVal) return false;
       const d = getDateValue(t.date);
       if (fromVal && d && d < fromVal) return false;
       if (toVal   && d && d > toVal)   return false;
       if (searchVal) {
-        // FIX #2: search payee (not description)
         const payee   = (t.payee ?? "").toLowerCase();
         const catName = (catMap[t.categoryId]?.name ?? "").toLowerCase();
         const notes   = (t.notes ?? "").toLowerCase();
@@ -169,7 +158,7 @@ export async function initTransactionsPage(_uid) {
       return true;
     });
 
-    // Summary — FIX #3: use amountCents / 100 for dollar totals
+    // Summary
     let totalIncomeCents = 0, totalExpenseCents = 0;
     filtered.forEach(t => {
       const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
@@ -188,7 +177,6 @@ export async function initTransactionsPage(_uid) {
     tbody.innerHTML = filtered.map(t => {
       const isIncome = t.type === "income";
       const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "—");
-      // FIX #4: look up category name from catMap via categoryId
       const catName  = catMap[t.categoryId]?.name ?? "";
       return `
         <tr class="txn-row" data-id="${t.id}">
@@ -213,13 +201,12 @@ export async function initTransactionsPage(_uid) {
     }).join("");
 
     // ── Category inline-save ─────────────────────────────────────────
-    // FIX #1 + #4: update doc in users/{uid}/transactions and save categoryId
     tbody.querySelectorAll(".txn-category-select").forEach(sel => {
       sel.addEventListener("change", async () => {
         const id    = sel.dataset.id;
-        const catId = sel.value;  // now a Firestore category document ID
+        const catId = sel.value;
         try {
-          await updateDoc(doc(getDb(), "users", _uid, "transactions", id), { categoryId: catId, updatedAt: new Date() });
+          await updateDoc(doc(getDb(), "transactions", id), { categoryId: catId, updatedAt: new Date() });
           const txn = allTxns.find(t => t.id === id);
           if (txn) txn.categoryId = catId;
           sel.classList.add("txn-category-saved");
@@ -233,14 +220,13 @@ export async function initTransactionsPage(_uid) {
     });
 
     // ── Delete with confirm ───────────────────────────────────────────
-    // FIX #1: delete from users/{uid}/transactions
     tbody.querySelectorAll(".txn-delete-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id  = btn.dataset.id;
         const row = tbody.querySelector(`tr[data-id="${id}"]`);
         if (!confirm("Delete this transaction? This cannot be undone.")) return;
         try {
-          await deleteDoc(doc(getDb(), "users", _uid, "transactions", id));
+          await deleteDoc(doc(getDb(), "transactions", id));
           allTxns = allTxns.filter(t => t.id !== id);
           row?.remove();
           renderTable();

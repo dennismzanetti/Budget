@@ -2,7 +2,7 @@
  * import.js — Bank of America CSV import engine
  *
  * Parses a BofA "Export Data" CSV export and writes
- * new transactions to Firestore under users/{uid}/transactions/.
+ * new transactions to Firestore under transactions/ (global collection).
  *
  * BofA CSV format (current export):
  *   - Row 1: column headers (no metadata rows)
@@ -191,7 +191,7 @@ export function parseBofACSV(csvText, accountId) {
 // ── Firestore Write ───────────────────────────────────────────────────────────
 
 /**
- * Import parsed BofA transactions into Firestore for the given user.
+ * Import parsed BofA transactions into Firestore.
  * - Resolves _categoryName to a real categoryId (auto-creates categories as needed).
  * - Normalises category name keys to lowercase before lookup to prevent casing mismatches.
  * - Skips rows whose sourceId already exists (safe to re-import same file).
@@ -199,7 +199,7 @@ export function parseBofACSV(csvText, accountId) {
 export async function importTransactions(uid, candidates) {
   if (!candidates.length) return { imported: 0, duplicates: 0, errors: [] };
 
-  const txnCol = collection(db, "users", uid, "transactions");
+  const txnCol = collection(db, "transactions");
   const errors = [];
   let duplicates = 0;
   let imported = 0;
