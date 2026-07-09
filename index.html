@@ -66,6 +66,9 @@
         <span class="brand-name">Budget</span>
       </div>
       <div class="topbar-actions">
+        <a href="#help" class="btn btn-ghost btn--icon" data-page="help" aria-label="Help">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </a>
         <button id="themeToggle2" class="btn btn-ghost btn--icon" type="button" aria-label="Toggle theme">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         </button>
@@ -126,6 +129,12 @@
             <a href="#settings" class="nav-item" data-page="settings" aria-current="false">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               <span>Settings</span>
+            </a>
+          </li>
+          <li>
+            <a href="#help" class="nav-item" data-page="help" aria-current="false">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Help</span>
             </a>
           </li>
         </ul>
@@ -496,6 +505,61 @@
 
         </section>
 
+        <!-- HELP PAGE -->
+        <section class="page hidden" id="page-help" aria-hidden="true">
+          <h2 class="page-title">Help</h2>
+
+          <section class="card">
+            <p class="eyebrow">Getting started</p>
+            <h3>Welcome to Budget App</h3>
+            <p class="subtle">Budget App is a shared household budgeting tool. All accounts, transactions, and categories are shared across all signed-in users in your household.</p>
+          </section>
+
+          <section class="card">
+            <h3>Pages overview</h3>
+            <dl class="help-dl">
+              <dt>Dashboard</dt>
+              <dd>A summary of your budget targets, recent transactions, and monthly cash flow.</dd>
+              <dt>Budget</dt>
+              <dd>Set spending targets for each category and track progress for the current month.</dd>
+              <dt>Transactions</dt>
+              <dd>Browse, filter, and search all transactions across every account. Filter by account, category, type, date range, or keyword.</dd>
+              <dt>Accounts</dt>
+              <dd>Add and manage your financial accounts (checking, savings, credit cards, loans, etc.).</dd>
+              <dt>Categories</dt>
+              <dd>Create and manage spending categories. Assign a color to each for easy identification in reports and charts.</dd>
+              <dt>Reports</dt>
+              <dd>View monthly summaries, spending trends, and cash flow breakdowns.</dd>
+              <dt>Import</dt>
+              <dd>Import transactions from a Bank of America CSV export. Select the destination account before uploading.</dd>
+              <dt>Settings</dt>
+              <dd>View your signed-in profile and recent repository commits.</dd>
+            </dl>
+          </section>
+
+          <section class="card">
+            <h3>Importing transactions</h3>
+            <ol class="help-steps">
+              <li>Go to <strong>Import</strong> in the sidebar.</li>
+              <li>Select the destination account from the dropdown.</li>
+              <li>Download a CSV from Bank of America and drop it into the upload zone.</li>
+              <li>Click <strong>Import Transactions</strong> — duplicates are skipped automatically.</li>
+            </ol>
+          </section>
+
+          <section class="card">
+            <h3>Tips</h3>
+            <ul class="help-tips">
+              <li>Transactions, accounts, and categories are <strong>shared by all users</strong> — changes are visible to everyone in your household immediately.</li>
+              <li>Use the <strong>search bar</strong> on the Transactions page to quickly find a specific purchase.</li>
+              <li>Toggle between <strong>light and dark mode</strong> using the sun/moon icon in the top-right corner.</li>
+              <li>The <strong>?</strong> button in the header always brings you back to this page.</li>
+            </ul>
+          </section>
+
+        </section>
+        <!-- END HELP PAGE -->
+
       </main>
     </div>
 
@@ -520,6 +584,10 @@
       <a href="#settings" class="tab-item" data-page="settings" aria-current="false">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         <span>Settings</span>
+      </a>
+      <a href="#help" class="tab-item" data-page="help" aria-current="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Help</span>
       </a>
     </nav>
 
