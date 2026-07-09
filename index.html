@@ -164,10 +164,47 @@
 
         <!-- ACCOUNTS PAGE -->
         <section class="page hidden" id="page-accounts" aria-hidden="true">
-          <h2 class="page-title">Accounts</h2>
-          <div id="accountsContent">
-            <p class="subtle accounts-loading">Loading accounts…</p>
+          <div class="page-header">
+            <h2 class="page-title">Accounts</h2>
+            <button id="addAccountBtn" class="btn btn-primary" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Account
+            </button>
           </div>
+
+          <!-- Add account form (hidden by default) -->
+          <div id="addAccountForm" class="card hidden" aria-label="Add new account">
+            <h3 class="card-title">New Account</h3>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="form-label" for="newAccountName">Account name <span aria-hidden="true">*</span></label>
+                <input id="newAccountName" class="form-input" type="text" placeholder="e.g. Joint Checking" required />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="newAccountType">Type</label>
+                <select id="newAccountType" class="form-input">
+                  <option value="checking">Checking</option>
+                  <option value="savings">Savings</option>
+                  <option value="credit">Credit Card</option>
+                  <option value="investment">Investment</option>
+                  <option value="mortgage">Mortgage</option>
+                  <option value="vehicle_loan">Vehicle Loan</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="newAccountInstitution">Institution</label>
+                <input id="newAccountInstitution" class="form-input" type="text" placeholder="e.g. Bank of America" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button id="cancelAddAccount" class="btn btn-ghost" type="button">Cancel</button>
+              <button id="saveAccountBtn" class="btn btn-primary" type="button">Save Account</button>
+            </div>
+          </div>
+
+          <!-- Accounts list — populated by accounts.js -->
+          <div id="accountsList" aria-live="polite"></div>
         </section>
 
         <!-- REPORTS PAGE -->
