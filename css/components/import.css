@@ -99,7 +99,10 @@
   color: var(--muted, #5e6a77);
 }
 
-/* Drop zone — border uses full var(--primary) so it's always visible in light + dark */
+/* Drop zone
+   Base border uses --border so it's always legible against the card surface in
+   both light (#d9e2ec on #fff) and dark (#304252 on #1a232d).
+   Hover / drag-over / has-file states brighten to --primary for clear feedback. */
 .import-dropzone {
   position: relative;
   display: flex;
@@ -109,9 +112,9 @@
   gap: 8px;
   padding: 40px 24px;
   min-height: 160px;
-  border: 2px dashed var(--primary, #0f766e);
+  border: 2px dashed var(--border, #d9e2ec);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--primary, #0f766e) 5%, var(--surface, #ffffff));
+  background: color-mix(in srgb, var(--primary, #0f766e) 8%, var(--surface, #ffffff));
   text-align: center;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
@@ -119,19 +122,19 @@
 .import-dropzone:hover,
 .import-dropzone:focus-visible {
   border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 10%, var(--surface, #ffffff));
+  background: color-mix(in srgb, var(--primary, #0f766e) 13%, var(--surface, #ffffff));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0f766e) 20%, transparent);
   outline: none;
 }
 .import-dropzone--drag {
   border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 12%, var(--surface, #ffffff));
+  background: color-mix(in srgb, var(--primary, #0f766e) 15%, var(--surface, #ffffff));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #0f766e) 25%, transparent);
 }
 .import-dropzone--has-file {
   border-style: solid;
   border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 7%, var(--surface, #ffffff));
+  background: color-mix(in srgb, var(--primary, #0f766e) 10%, var(--surface, #ffffff));
 }
 
 .import-dropzone__icon {
