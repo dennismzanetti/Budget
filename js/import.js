@@ -202,8 +202,15 @@ export function parseBofACSV(csvText, accountId) {
  *   preventing duplicate category creation from race conditions.
  * - Normalises category name keys to lowercase before lookup.
  * - Skips rows whose sourceId already exists (safe to re-import same file).
+ * - Emits a diagnostic console log with collection name, accountId, accountName,
+ *   imported count, and duplicate count.
+ *
+ * @param {string} uid
+ * @param {Object[]} candidates
+ * @param {string} [accountId]   - Firestore accountId tagged on each transaction
+ * @param {string} [accountName] - Human-readable account name for logging
  */
-export async function importTransactions(uid, candidates) {
+export async function importTransactions(uid, candidates, accountId = "", accountName = "") {
   if (!candidates.length) return { imported: 0, duplicates: 0, errors: [] };
 
   const txnCol = collection(getDb(), "transactions");
@@ -290,12 +297,18 @@ export async function importTransactions(uid, candidates) {
     }
   }
 
+  // ── Diagnostic log ────────────────────────────────────────────────────────
+  const acctLabel = accountName ? ` (${accountName})` : "";
+  console.log(
+    `[BofA Import] Wrote ${imported} transaction(s) to "transactions" for accountId "${accountId}"${acctLabel}. Duplicates skipped: ${duplicates}.`
+  );
+
   return { imported, duplicates, errors };
 }
 
 // ── High-level helper ─────────────────────────────────────────────────────────
 
-export async function importBofAFile(uid, file, accountId, onProgress = () => {}) {
+export async function importBofAFile(uid, file, accountId, onProgress = (), accountName = "") {
   onProgress({ step: "read", message: "Reading file…" });
   const csvText = await file.text();
 
@@ -303,13 +316,14 @@ export async function importBofAFile(uid, file, accountId, onProgress = () => {}
   const { parsed, skippedRows, parseErrors } = parseBofACSV(csvText, accountId);
 
   if (parseErrors.length && parsed.length === 0) {
-    return { imported: 0, duplicates: 0, skippedRows, parseErrors, writeErrors: [] };
+    return { imported: 0, duplicates: 0, skippedRows, parseErrors, writeErrors: [], accountName };
   }
 
   onProgress({ step: "write", message: `Writing ${parsed.length} transaction(s) to database…` });
-  const { imported, duplicates, errors: writeErrors } = await importTransactions(uid, parsed);
+  const { imported, duplicates, errors: writeErrors } = await importTransactions(uid, parsed, accountId, accountName);
 
-  onProgress({ step: "done", message: `Done. ${imported} imported, ${duplicates} duplicate(s) skipped.` });
+  const acctLabel = accountName ? ` into ${accountName}` : "";
+  onProgress({ step: "done", message: `Done. ${imported} imported${acctLabel}, ${duplicates} duplicate(s) skipped.` });
 
-  return { imported, duplicates, skippedRows, parseErrors, writeErrors };
+  return { imported, duplicates, skippedRows, parseErrors, writeErrors, accountName };
 }
