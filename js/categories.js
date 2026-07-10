@@ -101,7 +101,7 @@ export async function populateCategorySelect(_uid, selectEl, opts = {}) {
       .map(c => `<option value="${c.id}"${c.id === currentId ? " selected" : ""}>${escHtml(c.name)}</option>`)
       .join("");
     selectEl.innerHTML =
-      (includeBlank ? '<option value="">— No category —</option>' : "") + options;
+      (includeBlank ? '<option value="">\u2014 No category \u2014</option>' : "") + options;
   } catch (err) {
     console.error("[categories] populateCategorySelect error:", err);
     selectEl.innerHTML = '<option value="">Error loading categories</option>';
@@ -120,13 +120,13 @@ function fmtCurrency(n) {
   return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ── Breakdown: fetch transactions for a given month (user-scoped) ──────
-async function fetchTransactionsForMonth(uid, year, month) {
+// ── Fetch transactions for a given period from global collection ───────
+async function fetchTransactionsForPeriod(year, month) {
   // month is 0-based (JS Date)
   const start = new Date(year, month, 1);
   const end   = new Date(year, month + 1, 1);
-  // FIX: use user-scoped subcollection instead of root "transactions"
-  const txRef = collection(getDb(), "users", uid, "transactions");
+  // Transactions are stored in the global "transactions" collection shared by all users
+  const txRef = collection(getDb(), "transactions");
   const q = query(
     txRef,
     where("date", ">=", Timestamp.fromDate(start)),
@@ -143,7 +143,6 @@ let _expenseChart  = null;
 function buildDonut(canvasId, labels, data, colors) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return null;
-  // Destroy previous instance if any
   if (canvasId === "catIncomeChart"  && _incomeChart)  { _incomeChart.destroy();  _incomeChart  = null; }
   if (canvasId === "catExpenseChart" && _expenseChart) { _expenseChart.destroy(); _expenseChart = null; }
 
@@ -195,7 +194,6 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart) {
     return;
   }
 
-  // Sort by amount descending
   const sorted = Object.entries(totalsMap).sort((a, b) => b[1].amount - a[1].amount);
 
   sorted.forEach(([, entry], idx) => {
@@ -211,7 +209,6 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart) {
       </span>
       <span class="cat-breakdown__row-amount">${fmtCurrency(entry.amount)}</span>`;
 
-    // Hover: highlight slice in donut
     li.addEventListener("mouseenter", () => {
       li.classList.add("is-highlighted");
       if (chart) {
@@ -232,41 +229,38 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart) {
   });
 }
 
-// ── Main breakdown renderer (uid now threaded through) ─────────────────
-async function renderBreakdown(uid, year, month, catsMap) {
+// ── Main breakdown renderer ────────────────────────────────────────────
+// Returns { incomeTotals, expenseTotals } so the card list can reflect period data
+async function renderBreakdown(year, month, catsMap) {
   const periodEl      = document.getElementById("catBreakdownPeriod");
   const incomeTotalEl = document.getElementById("catIncomeTotalLabel");
   const expTotalEl    = document.getElementById("catExpenseTotalLabel");
   const incomeRowsEl  = document.getElementById("catIncomeRows");
   const expRowsEl     = document.getElementById("catExpenseRows");
 
-  if (!periodEl) return;
+  if (!periodEl) return { incomeTotals: {}, expenseTotals: {} };
 
   const monthName = new Date(year, month, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
   periodEl.textContent = monthName;
 
-  // Fetch transactions from user-scoped subcollection
   let txns;
   try {
-    txns = await fetchTransactionsForMonth(uid, year, month);
+    txns = await fetchTransactionsForPeriod(year, month);
   } catch (err) {
     console.error("[categories] breakdown fetch error:", err);
     txns = [];
   }
 
   // Aggregate by category
-  // Supports both imported shape (amountCents + type) and legacy float (amount)
   const incomeTotals  = {}; // catId -> { name, color, amount }
   const expenseTotals = {};
 
   txns.forEach(tx => {
     let absAmount, isIncome;
     if (tx.amountCents !== undefined) {
-      // Imported shape: amountCents is always positive; type is "income" or "expense"
       absAmount = tx.amountCents / 100;
       isIncome  = tx.type === "income";
     } else {
-      // Legacy shape: signed float amount
       const legacy = parseFloat(tx.amount) || 0;
       if (legacy === 0) return;
       absAmount = Math.abs(legacy);
@@ -283,15 +277,12 @@ async function renderBreakdown(uid, year, month, catsMap) {
   const incomeTotal  = Object.values(incomeTotals).reduce((s, v) => s + v.amount, 0);
   const expenseTotal = Object.values(expenseTotals).reduce((s, v) => s + v.amount, 0);
 
-  // Update totals
   if (incomeTotalEl)  incomeTotalEl.textContent  = fmtCurrency(incomeTotal);
   if (expTotalEl)     expTotalEl.textContent      = fmtCurrency(expenseTotal);
 
-  // Build sorted arrays for charts
   const incomeSorted  = Object.entries(incomeTotals).sort((a, b) => b[1].amount - a[1].amount);
   const expenseSorted = Object.entries(expenseTotals).sort((a, b) => b[1].amount - a[1].amount);
 
-  // Draw donuts
   const incomeChart  = buildDonut(
     "catIncomeChart",
     incomeSorted.map(([, v]) => v.name),
@@ -305,19 +296,24 @@ async function renderBreakdown(uid, year, month, catsMap) {
     expenseSorted.map(([, v]) => v.color)
   );
 
-  // Render row lists
   if (incomeRowsEl)  renderBreakdownRows(incomeRowsEl,  incomeTotals,  incomeTotal,  incomeChart);
   if (expRowsEl)     renderBreakdownRows(expRowsEl,     expenseTotals, expenseTotal, expenseChart);
+
+  return { incomeTotals, expenseTotals };
 }
 
-// ── Render a single category card ────────────────────────────────────
-function renderCard(c) {
+// ── Render a single category card (with optional period total) ────────
+function renderCard(c, periodTotal) {
   const color = c.color || "#888888";
+  const hasPeriodTotal = periodTotal !== undefined && periodTotal > 0;
   return `
     <li class="account-card" data-id="${c.id}">
       <div class="account-card__info">
         <span class="category-swatch" style="background:${escHtml(color)}" aria-hidden="true"></span>
         <span class="account-card__name">${escHtml(c.name)}</span>
+      </div>
+      <div class="account-card__meta">
+        ${hasPeriodTotal ? `<span class="category-card__period-total">${fmtCurrency(periodTotal)}</span>` : ""}
       </div>
       <div class="account-card__actions">
         <button class="btn btn-ghost btn-sm js-edit-category" data-id="${c.id}" title="Edit category">${ICON_EDIT}</button>
@@ -374,10 +370,17 @@ export async function initCategoriesPage(_uid) {
   let breakdownYear  = now.getFullYear();
   let breakdownMonth = now.getMonth(); // 0-based
 
-  // FIX: pass _uid into renderBreakdown so it queries the right subcollection
+  // Holds the latest period totals so renderList can annotate cards
+  let _lastIncomeTotals  = {};
+  let _lastExpenseTotals = {};
+
   async function refreshBreakdown() {
     const catsMap = await getCategoriesMap(_uid);
-    await renderBreakdown(_uid, breakdownYear, breakdownMonth, catsMap);
+    const { incomeTotals, expenseTotals } = await renderBreakdown(breakdownYear, breakdownMonth, catsMap);
+    _lastIncomeTotals  = incomeTotals;
+    _lastExpenseTotals = expenseTotals;
+    // Re-render cards so period totals update
+    renderList();
   }
 
   prevBtn?.addEventListener("click", () => {
@@ -391,9 +394,6 @@ export async function initCategoriesPage(_uid) {
     if (breakdownMonth > 11) { breakdownMonth = 0; breakdownYear++; }
     refreshBreakdown();
   });
-
-  // Initial breakdown load
-  refreshBreakdown();
 
   function showAddError(msg) {
     if (!addErrEl) return;
@@ -419,7 +419,14 @@ export async function initCategoriesPage(_uid) {
         return;
       }
 
-      listEl.innerHTML = cats.map(renderCard).join("");
+      // Compute combined total per category for the selected period
+      // Expense takes priority; fall back to income if category only has income
+      listEl.innerHTML = cats.map(c => {
+        const expTotal = _lastExpenseTotals[c.id]?.amount;
+        const incTotal = _lastIncomeTotals[c.id]?.amount;
+        const periodTotal = expTotal ?? incTotal;
+        return renderCard(c, periodTotal);
+      }).join("");
 
       listEl.querySelectorAll(".js-edit-category").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -535,5 +542,6 @@ export async function initCategoriesPage(_uid) {
     }
   });
 
-  renderList();
+  // Initial load — breakdown first so cards have period totals on first render
+  await refreshBreakdown();
 }
