@@ -111,6 +111,7 @@ export async function populateCategorySelect(_uid, selectEl, opts = {}) {
 // ── SVG icons ─────────────────────────────────────────────────────────
 const ICON_EDIT   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
 const ICON_DELETE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>`;
+const ICON_CHEVRON = `<svg class="cat-breakdown__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 
 function escHtml(str) {
   return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -120,12 +121,17 @@ function fmtCurrency(n) {
   return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtDate(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 // ── Fetch transactions for a given period from global collection ───────
 async function fetchTransactionsForPeriod(year, month) {
   // month is 0-based (JS Date)
   const start = new Date(year, month, 1);
   const end   = new Date(year, month + 1, 1);
-  // Transactions are stored in the global "transactions" collection shared by all users
   const txRef = collection(getDb(), "transactions");
   const q = query(
     txRef,
@@ -186,31 +192,90 @@ function buildDonut(canvasId, labels, data, colors) {
   return chart;
 }
 
+// ── Build expanded transactions sub-list for a category ───────────────
+function buildTxList(catId, type, txns, catsMap) {
+  const matching = txns.filter(tx => {
+    const txCatId = tx.categoryId || "__none__";
+    let isIncome;
+    if (tx.amountCents !== undefined) {
+      isIncome = tx.type === "income";
+    } else {
+      const legacy = parseFloat(tx.amount) || 0;
+      isIncome = legacy > 0;
+    }
+    const txType = isIncome ? "income" : "expense";
+    return txCatId === catId && txType === type;
+  });
+
+  // Sort by date descending
+  matching.sort((a, b) => {
+    const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+    const db = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+    return db - da;
+  });
+
+  const ul = document.createElement("ul");
+  ul.className = "cat-breakdown__tx-list";
+
+  if (matching.length === 0) {
+    ul.innerHTML = `<li class="cat-breakdown__tx-empty">No transactions found.</li>`;
+    return ul;
+  }
+
+  const amtClass = type === "income" ? "cat-breakdown__tx-amount--income" : "cat-breakdown__tx-amount--expense";
+
+  matching.forEach(tx => {
+    const absAmt = tx.amountCents !== undefined
+      ? tx.amountCents / 100
+      : Math.abs(parseFloat(tx.amount) || 0);
+    const payee = tx.payee || tx.description || "";
+    const li = document.createElement("li");
+    li.className = "cat-breakdown__tx-item";
+    li.innerHTML = `
+      <span class="cat-breakdown__tx-date">${escHtml(fmtDate(tx.date))}</span>
+      <span class="cat-breakdown__tx-payee" title="${escHtml(payee)}">${escHtml(payee)}</span>
+      <span class="cat-breakdown__tx-amount ${amtClass}">${fmtCurrency(absAmt)}</span>`;
+    ul.appendChild(li);
+  });
+
+  return ul;
+}
+
 // ── Render rows for one panel (income or expense) ─────────────────────
-function renderBreakdownRows(rowsEl, totalsMap, total, chart) {
+function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMap) {
   rowsEl.innerHTML = "";
   if (!totalsMap || Object.keys(totalsMap).length === 0) {
     rowsEl.innerHTML = `<li class="cat-breakdown__empty">No transactions this period.</li>`;
     return;
   }
 
+  const amtClass = type === "income" ? "cat-breakdown__row-amount--income" : "cat-breakdown__row-amount--expense";
   const sorted = Object.entries(totalsMap).sort((a, b) => b[1].amount - a[1].amount);
 
-  sorted.forEach(([, entry], idx) => {
+  sorted.forEach(([catId, entry], idx) => {
     const pct = total > 0 ? (entry.amount / total) * 100 : 0;
+
+    // ── Row item
     const li = document.createElement("li");
     li.className = "cat-breakdown__row";
     li.dataset.index = idx;
+    li.dataset.catId = catId;
+    li.dataset.type  = type;
+    li.setAttribute("role", "button");
+    li.setAttribute("tabindex", "0");
+    li.setAttribute("aria-expanded", "false");
     li.innerHTML = `
       <span class="cat-breakdown__swatch" style="background:${escHtml(entry.color)}"></span>
       <span class="cat-breakdown__row-name" title="${escHtml(entry.name)}">${escHtml(entry.name)}</span>
       <span class="cat-breakdown__bar-wrap">
         <span class="cat-breakdown__bar" style="width:${pct.toFixed(1)}%;background:${escHtml(entry.color)}"></span>
       </span>
-      <span class="cat-breakdown__row-amount">${fmtCurrency(entry.amount)}</span>`;
+      <span class="cat-breakdown__row-amount ${amtClass}">${fmtCurrency(entry.amount)}</span>
+      ${ICON_CHEVRON}`;
 
+    // ── Hover: highlight chart slice
     li.addEventListener("mouseenter", () => {
-      li.classList.add("is-highlighted");
+      if (!li.classList.contains("is-expanded")) li.classList.add("is-highlighted");
       if (chart) {
         chart.setDatasetVisibility(0, true);
         chart.tooltip.setActiveElements([{ datasetIndex: 0, index: idx }], { x: 0, y: 0 });
@@ -223,6 +288,38 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart) {
         chart.tooltip.setActiveElements([], {});
         chart.update();
       }
+    });
+
+    // ── Click / keyboard: toggle expanded transactions
+    function toggleExpand(e) {
+      // Don't fire if clicking a child button
+      if (e.target.closest("button")) return;
+      const isExpanded = li.classList.contains("is-expanded");
+
+      // Collapse any other open row in this panel
+      rowsEl.querySelectorAll(".cat-breakdown__row.is-expanded").forEach(open => {
+        if (open !== li) {
+          open.classList.remove("is-expanded");
+          open.setAttribute("aria-expanded", "false");
+          open.nextElementSibling?.remove();
+        }
+      });
+
+      if (isExpanded) {
+        li.classList.remove("is-expanded");
+        li.setAttribute("aria-expanded", "false");
+        li.nextElementSibling?.remove();
+      } else {
+        li.classList.add("is-expanded");
+        li.setAttribute("aria-expanded", "true");
+        const txList = buildTxList(catId, type, txns, catsMap);
+        li.insertAdjacentElement("afterend", txList);
+      }
+    }
+
+    li.addEventListener("click", toggleExpand);
+    li.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleExpand(e); }
     });
 
     rowsEl.appendChild(li);
@@ -296,16 +393,21 @@ async function renderBreakdown(year, month, catsMap) {
     expenseSorted.map(([, v]) => v.color)
   );
 
-  if (incomeRowsEl)  renderBreakdownRows(incomeRowsEl,  incomeTotals,  incomeTotal,  incomeChart);
-  if (expRowsEl)     renderBreakdownRows(expRowsEl,     expenseTotals, expenseTotal, expenseChart);
+  if (incomeRowsEl)  renderBreakdownRows(incomeRowsEl,  incomeTotals,  incomeTotal,  incomeChart,  "income",  txns, catsMap);
+  if (expRowsEl)     renderBreakdownRows(expRowsEl,     expenseTotals, expenseTotal, expenseChart, "expense", txns, catsMap);
 
   return { incomeTotals, expenseTotals };
 }
 
 // ── Render a single category card (with optional period total) ────────
-function renderCard(c, periodTotal) {
+function renderCard(c, periodTotal, type) {
   const color = c.color || "#888888";
   const hasPeriodTotal = periodTotal !== undefined && periodTotal > 0;
+  const amtClass = type === "income"
+    ? "category-card__period-total--income"
+    : type === "expense"
+      ? "category-card__period-total--expense"
+      : "";
   return `
     <li class="account-card" data-id="${c.id}">
       <div class="account-card__info">
@@ -313,7 +415,7 @@ function renderCard(c, periodTotal) {
         <span class="account-card__name">${escHtml(c.name)}</span>
       </div>
       <div class="account-card__meta category-card__meta">
-        ${hasPeriodTotal ? `<span class="category-card__period-total">${fmtCurrency(periodTotal)}</span>` : ""}
+        ${hasPeriodTotal ? `<span class="category-card__period-total ${amtClass}">${fmtCurrency(periodTotal)}</span>` : ""}
       </div>
       <div class="account-card__actions">
         <button class="btn btn-ghost btn-sm js-edit-category" data-id="${c.id}" title="Edit category">${ICON_EDIT}</button>
@@ -419,13 +521,13 @@ export async function initCategoriesPage(_uid) {
         return;
       }
 
-      // Compute combined total per category for the selected period
-      // Expense takes priority; fall back to income if category only has income
+      // Determine type for color: expense takes priority over income
       listEl.innerHTML = cats.map(c => {
         const expTotal = _lastExpenseTotals[c.id]?.amount;
         const incTotal = _lastIncomeTotals[c.id]?.amount;
         const periodTotal = expTotal ?? incTotal;
-        return renderCard(c, periodTotal);
+        const type = expTotal !== undefined ? "expense" : incTotal !== undefined ? "income" : null;
+        return renderCard(c, periodTotal, type);
       }).join("");
 
       listEl.querySelectorAll(".js-edit-category").forEach(btn => {
