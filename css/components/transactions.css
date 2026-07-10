@@ -9,57 +9,73 @@
   gap: 0;
 }
 
-/* ── Dashboard header strip (static — never scrolls) ── */
-.txn-dashboard-header {
+/* ── Page header bar ── */
+.txn-page-header-bar {
   flex-shrink: 0;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: var(--space-4, 1rem) var(--space-5, 1.25rem) var(--space-3, 0.75rem);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3, 0.75rem);
 }
 
-.txn-page-header {
+.txn-page-header-bar .page-title {
   margin-bottom: 0;
 }
 
-.txn-page-header .page-title {
-  margin-bottom: 0;
-}
-
-/* ── Stat cards row ── */
-.txn-summary-cards {
-  display: flex;
+/* ── Summary stat cards section ── */
+.txn-summary-section {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-3, 0.75rem);
-  flex-wrap: wrap;
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .txn-stat-card {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
   background: var(--bg, #f5f7fb);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 12px);
-  border-top: 3px solid var(--border);
-  min-width: 110px;
-  flex: 1 1 110px;
-  max-width: 200px;
+  border-left: 4px solid var(--border);
+  transition: box-shadow 150ms ease;
 }
 
-.txn-stat-card--income  { border-top-color: var(--color-success, #437a22); }
-.txn-stat-card--expense { border-top-color: var(--color-notification, #a13544); }
-.txn-stat-card--net     { border-top-color: var(--primary); }
+.txn-stat-card:hover {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 8%, transparent);
+}
 
-.txn-stat-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--muted);
-  white-space: nowrap;
+.txn-stat-card--income  { border-left-color: var(--color-success, #437a22); }
+.txn-stat-card--expense { border-left-color: var(--color-notification, #a13544); }
+.txn-stat-card--net     { border-left-color: var(--primary); }
+
+.txn-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.txn-stat-card--income  .txn-stat-icon { background: color-mix(in srgb, var(--color-success, #437a22) 12%, transparent); color: var(--color-success, #437a22); }
+.txn-stat-card--expense .txn-stat-icon { background: color-mix(in srgb, var(--color-notification, #a13544) 12%, transparent); color: var(--color-notification, #a13544); }
+.txn-stat-card--net     .txn-stat-icon { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+
+.txn-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
 .txn-stat-value {
@@ -68,6 +84,15 @@
   font-variant-numeric: tabular-nums;
   color: var(--text);
   line-height: 1.15;
+  white-space: nowrap;
+}
+
+.txn-stat-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
   white-space: nowrap;
 }
 
@@ -81,12 +106,16 @@ html[data-theme="dark"] .txn-stat-value--expense { color: #dd6974; }
 html[data-theme="dark"] .txn-stat-value--net     { color: var(--primary); }
 html[data-theme="dark"] .txn-stat-value--net.negative { color: #dd6974; }
 
-/* ── Inline filter strip ── */
-.txn-filter-strip {
+/* ── Filter bar ── */
+.txn-filter-bar {
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2, 0.5rem);
   align-items: center;
+  padding: var(--space-3, 0.75rem) var(--space-5, 1.25rem);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .txn-filter-input {
@@ -305,20 +334,33 @@ html[data-theme="dark"] .txn-type-badge--expense { background: color-mix(in srgb
 @media (max-width: 640px) {
   .txn-hide-mobile { display: none; }
 
-  .txn-dashboard-header {
+  .txn-page-header-bar {
     padding: 0.75rem 0.75rem 0.5rem;
   }
 
+  .txn-summary-section {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0.75rem 0.75rem;
+    gap: 0.5rem;
+  }
+
   .txn-stat-card {
-    min-width: 80px;
     padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .txn-stat-icon {
+    width: 26px;
+    height: 26px;
+    font-size: 0.85rem;
   }
 
   .txn-stat-value {
     font-size: 0.95rem;
   }
 
-  .txn-filter-strip {
+  .txn-filter-bar {
+    padding: 0.5rem 0.75rem;
     gap: 0.35rem;
   }
 
