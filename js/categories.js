@@ -59,7 +59,131 @@ async function fetchCategories() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-// ── Public helpers ────────────────────────────────────────────────────
+// ── Emoji Picker ──────────────────────────────────────────────────
+const EMOJI_CATEGORIES = [
+  {
+    label: "💰", title: "Money & Finance",
+    emojis: ["💰","💵","💳","💴","🧰","💸","💹","🪙","🏦","📈","📉","🪴","💎"]
+  },
+  {
+    label: "🍕", title: "Food & Drink",
+    emojis: ["🍕","🛍️","🥑","🍔","🍳","🥗","🍱","🍺","☕","🍽️","🥐","🍩","🥖","🦊","🐟","🍦","🍨"]
+  },
+  {
+    label: "🏠", title: "Home & Living",
+    emojis: ["🏠","🏡","🛸","📱","💻","📺","💡","🛒","🧹","🧴","🪣","🚪","🛍️","🛠️","🛑"]
+  },
+  {
+    label: "🚗", title: "Transport",
+    emojis: ["🚗","🚕","🚌","✈️","🚂","🚲","🚜","⛽","🚨","🚀","⚡","🚶"]
+  },
+  {
+    label: "❤️", title: "Health & Wellness",
+    emojis: ["❤️","🏥","💊","💉","🩺","🧘","🏋️","🧔","💪","🦷","🛌","🚿","🧖","🏺"]
+  },
+  {
+    label: "🎉", title: "Fun & Entertainment",
+    emojis: ["🎉","🎥","🎨","🎤","🎮","🎵","🎸","🎲","🎯","🦅","🎭","📸","🏆","🚫"]
+  },
+  {
+    label: "💼", title: "Work & Education",
+    emojis: ["💼","📚","✏️","📝","📊","📞","🖥️","🔨","🔑","🎓","🤝","📰","📌"]
+  },
+  {
+    label: "🐾", title: "Pets & Nature",
+    emojis: ["🐾","🐶","🐱","🐈","🐵","🐰","🐻","🌳","🌺","☀️","🌟","🌊","🦋","🐢"]
+  },
+  {
+    label: "👶", title: "People & Family",
+    emojis: ["👶","👨","👩","👴","👵","👨‍👩‍👧‍👦","👑","🎁","💌","👋","🤗","🙏","✨"]
+  },
+];
+
+/**
+ * Initialise an emoji picker attached to a trigger button + hidden input.
+ *
+ * @param {object} opts
+ *   triggerBtn  — <button> that opens/closes the popup
+ *   displaySpan — <span> inside the trigger that shows the current emoji
+ *   popup       — popup <div>
+ *   tabsEl      — tabs container inside popup
+ *   gridEl      — emoji grid container inside popup
+ *   clearBtn    — clear button inside popup
+ *   hiddenInput — <input type="hidden"> that holds the value
+ *   defaultEmoji— emoji to display when value is empty (default "😊")
+ */
+function initEmojiPicker(opts) {
+  const {
+    triggerBtn, displaySpan, popup, tabsEl, gridEl, clearBtn,
+    hiddenInput, defaultEmoji = "😊"
+  } = opts;
+
+  let activeCategory = 0;
+
+  function renderTabs() {
+    tabsEl.innerHTML = EMOJI_CATEGORIES.map((cat, i) =>
+      `<button type="button" class="emoji-tab${i === activeCategory ? " is-active" : ""}" title="${cat.title}" data-idx="${i}">${cat.label}</button>`
+    ).join("");
+    tabsEl.querySelectorAll(".emoji-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeCategory = parseInt(btn.dataset.idx, 10);
+        renderTabs();
+        renderGrid();
+      });
+    });
+  }
+
+  function renderGrid() {
+    gridEl.innerHTML = EMOJI_CATEGORIES[activeCategory].emojis.map(e =>
+      `<button type="button" class="emoji-btn" data-emoji="${e}" aria-label="${e}">${e}</button>`
+    ).join("");
+    gridEl.querySelectorAll(".emoji-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const val = btn.dataset.emoji;
+        hiddenInput.value = val;
+        displaySpan.textContent = val;
+        closePopup();
+      });
+    });
+  }
+
+  function openPopup() {
+    popup.classList.remove("hidden");
+    triggerBtn.setAttribute("aria-expanded", "true");
+    renderTabs();
+    renderGrid();
+  }
+
+  function closePopup() {
+    popup.classList.add("hidden");
+    triggerBtn.setAttribute("aria-expanded", "false");
+  }
+
+  triggerBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    popup.classList.contains("hidden") ? openPopup() : closePopup();
+  });
+
+  clearBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    hiddenInput.value = "";
+    displaySpan.textContent = defaultEmoji;
+    closePopup();
+  });
+
+  // Close on outside click
+  document.addEventListener("click", e => {
+    if (!popup.classList.contains("hidden") && !triggerBtn.closest(".emoji-picker-wrap").contains(e.target)) {
+      closePopup();
+    }
+  });
+
+  // Set initial display
+  const initial = hiddenInput.value;
+  displaySpan.textContent = initial || defaultEmoji;
+}
+
+// ── Public helpers ─────────────────────────────────────────────────
 
 /**
  * Returns a map of { categoryId -> { name, color, emoji } }.
@@ -117,7 +241,7 @@ export async function populateCategorySelect(_uid, selectEl, opts = {}) {
   }
 }
 
-// ── SVG icons ─────────────────────────────────────────────────────────
+// ── SVG icons ─────────────────────────────────────────────────────
 const ICON_EDIT   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
 const ICON_DELETE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>`;
 const ICON_CHEVRON = `<svg class="cat-breakdown__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
@@ -268,7 +392,7 @@ function buildCardTxList(catId, txns, catsMap) {
 }
 
 // ── Build expanded transactions sub-list for a category (breakdown rows) ─
-function buildTxList(catId, type, txns, catsMap) {
+ function buildTxList(catId, type, txns, catsMap) {
   const matching = txns.filter(tx => {
     const txCatId = tx.categoryId || "__none__";
     let isIncome;
@@ -475,7 +599,7 @@ async function renderBreakdown(uid, year, month, catsMap) {
   return { incomeTotals, expenseTotals, txns };
 }
 
-// ── Render a single category card ─────────────────────────────────────
+// ── Render a single category card ───────────────────────────────────
 function renderCard(c, periodTotal, type) {
   const color = c.color || "#888888";
   const emoji = c.emoji || "";
@@ -488,6 +612,15 @@ function renderCard(c, periodTotal, type) {
   const emojiHtml = emoji
     ? `<span class="category-card__emoji" aria-hidden="true">${escHtml(emoji)}</span>`
     : "";
+  // Unique IDs for this card's emoji picker
+  const epWrapId  = `cat-ep-wrap-${c.id}`;
+  const epBtnId   = `cat-ep-btn-${c.id}`;
+  const epDispId  = `cat-ep-disp-${c.id}`;
+  const epPopupId = `cat-ep-popup-${c.id}`;
+  const epTabsId  = `cat-ep-tabs-${c.id}`;
+  const epGridId  = `cat-ep-grid-${c.id}`;
+  const epClearId = `cat-ep-clear-${c.id}`;
+
   return `
     <li class="account-card account-card--expandable" data-id="${c.id}" role="button" tabindex="0" aria-expanded="false">
       <div class="account-card__info category-card__info-row">
@@ -516,8 +649,19 @@ function renderCard(c, periodTotal, type) {
             <input id="cat-edit-color-${c.id}" class="form-input form-input--color" type="color" value="${escHtml(color)}" />
           </div>
           <div class="form-field form-field--emoji">
-            <label class="form-label" for="cat-edit-emoji-${c.id}">Emoji</label>
-            <input id="cat-edit-emoji-${c.id}" class="form-input form-input--emoji" type="text" value="${escHtml(emoji)}" placeholder="e.g. \uD83C\uDF55" maxlength="4" />
+            <label class="form-label">Emoji</label>
+            <input id="cat-edit-emoji-${c.id}" type="hidden" value="${escHtml(emoji)}" />
+            <div class="emoji-picker-wrap" id="${epWrapId}">
+              <button type="button" class="emoji-picker-trigger" id="${epBtnId}" aria-haspopup="true" aria-expanded="false" aria-label="Choose emoji">
+                <span class="emoji-picker-trigger__display" id="${epDispId}">${emoji || "😊"}</span>
+                <span class="emoji-picker-trigger__caret">▾</span>
+              </button>
+              <div class="emoji-picker-popup hidden" id="${epPopupId}" role="dialog" aria-label="Emoji picker">
+                <div class="emoji-picker-popup__tabs" id="${epTabsId}"></div>
+                <div class="emoji-picker-popup__grid" id="${epGridId}"></div>
+                <button type="button" class="emoji-picker-popup__clear" id="${epClearId}">Clear</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="account-edit-error js-cat-edit-error hidden"></div>
@@ -538,7 +682,7 @@ function renderDeleteConfirm(id) {
     </li>`;
 }
 
-// ── Categories Page UI ────────────────────────────────────────────────
+// ── Categories Page UI ────────────────────────────────────────────
 export async function initCategoriesPage(_uid) {
   const listEl    = document.getElementById("categoriesList");
   const addForm   = document.getElementById("addCategoryForm");
@@ -547,12 +691,32 @@ export async function initCategoriesPage(_uid) {
   const saveBtn   = document.getElementById("saveCategoryBtn");
   const nameInput = document.getElementById("newCategoryName");
   const colorInput= document.getElementById("newCategoryColor");
-  const emojiInput= document.getElementById("newCategoryEmoji");
+  const emojiInput= document.getElementById("newCategoryEmoji");  // hidden input
   const addErrEl  = document.getElementById("addCategoryError");
   const prevBtn   = document.getElementById("catBreakdownPrev");
   const nextBtn   = document.getElementById("catBreakdownNext");
 
   if (!listEl) return;
+
+  // Wire up the Add-form emoji picker
+  const newEmojiDisplaySpan = document.getElementById("newEmojiDisplay");
+  const newEmojiPickerBtn   = document.getElementById("newEmojiPickerBtn");
+  const newEmojiPickerPopup = document.getElementById("newEmojiPickerPopup");
+  const newEmojiTabs        = document.getElementById("newEmojiTabs");
+  const newEmojiGrid        = document.getElementById("newEmojiGrid");
+  const newEmojiClear       = document.getElementById("newEmojiClear");
+
+  if (newEmojiPickerBtn) {
+    initEmojiPicker({
+      triggerBtn:  newEmojiPickerBtn,
+      displaySpan: newEmojiDisplaySpan,
+      popup:       newEmojiPickerPopup,
+      tabsEl:      newEmojiTabs,
+      gridEl:      newEmojiGrid,
+      clearBtn:    newEmojiClear,
+      hiddenInput: emojiInput,
+    });
+  }
 
   const now = new Date();
   let breakdownYear  = now.getFullYear();
@@ -617,6 +781,29 @@ export async function initCategoriesPage(_uid) {
         return renderCard(c, periodTotal, type);
       }).join("");
 
+      // Wire emoji pickers for all edit rows
+      cats.forEach(c => {
+        const epBtn   = document.getElementById(`cat-ep-btn-${c.id}`);
+        const epDisp  = document.getElementById(`cat-ep-disp-${c.id}`);
+        const epPopup = document.getElementById(`cat-ep-popup-${c.id}`);
+        const epTabs  = document.getElementById(`cat-ep-tabs-${c.id}`);
+        const epGrid  = document.getElementById(`cat-ep-grid-${c.id}`);
+        const epClear = document.getElementById(`cat-ep-clear-${c.id}`);
+        const epInput = document.getElementById(`cat-edit-emoji-${c.id}`);
+        if (epBtn && epInput) {
+          initEmojiPicker({
+            triggerBtn:  epBtn,
+            displaySpan: epDisp,
+            popup:       epPopup,
+            tabsEl:      epTabs,
+            gridEl:      epGrid,
+            clearBtn:    epClear,
+            hiddenInput: epInput,
+            defaultEmoji: c.emoji || "😊",
+          });
+        }
+      });
+
       listEl.querySelectorAll(".account-card--expandable").forEach(card => {
         function collapseCard(c) {
           c.classList.remove("is-expanded");
@@ -676,7 +863,7 @@ export async function initCategoriesPage(_uid) {
           const id = form.dataset.id;
           const nameEl  = form.querySelector(`#cat-edit-name-${id}`);
           const colorEl = form.querySelector(`#cat-edit-color-${id}`);
-          const emojiEl = form.querySelector(`#cat-edit-emoji-${id}`);
+          const emojiEl = form.querySelector(`#cat-edit-emoji-${id}`);  // hidden input
           const errEl   = form.querySelector(".js-cat-edit-error");
           const name = nameEl?.value.trim();
           if (!name) {
@@ -738,7 +925,8 @@ export async function initCategoriesPage(_uid) {
     addForm?.classList.add("hidden");
     addBtn?.classList.remove("hidden");
     if (nameInput) nameInput.value = "";
-    if (emojiInput) emojiInput.value = "";
+    if (emojiInput) { emojiInput.value = ""; }
+    if (newEmojiDisplaySpan) newEmojiDisplaySpan.textContent = "😊";
     clearAddError();
   });
 
@@ -763,7 +951,8 @@ export async function initCategoriesPage(_uid) {
       addForm?.classList.add("hidden");
       addBtn?.classList.remove("hidden");
       if (nameInput) nameInput.value = "";
-      if (emojiInput) emojiInput.value = "";
+      if (emojiInput) { emojiInput.value = ""; }
+      if (newEmojiDisplaySpan) newEmojiDisplaySpan.textContent = "😊";
       renderList();
       refreshBreakdown();
     } catch (err) {
