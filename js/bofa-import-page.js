@@ -63,8 +63,9 @@ export function initImportPage() {
     return;
   }
 
-  // Populate accounts dropdown
-  if (currentUid) populateAccountSelect(currentUid, accountSelect);
+  // Populate accounts dropdown — called unconditionally since populateAccountSelect
+  // does not use the uid and currentUid may not be set yet when the page first loads.
+  populateAccountSelect(null, accountSelect);
 
   let selectedFile = null;
 
@@ -218,9 +219,5 @@ export function initImportPage() {
 window.addEventListener("hashchange", () => {
   if (window.location.hash === "#import") {
     initImportPage();
-    if (currentUid) {
-      const accountSelect = document.getElementById("importAccountSelect");
-      if (accountSelect) populateAccountSelect(currentUid, accountSelect);
-    }
   }
 });
