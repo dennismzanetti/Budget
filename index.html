@@ -19,78 +19,19 @@
   <!-- LOGGED IN VIEW -->
   <div id="loggedInView" class="hidden app-layout">
 
-    <!-- TOPBAR -->
-    <header class="app-topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48" role="img" aria-label="Budget App logo">
-            <rect x="6" y="8" width="36" height="32" rx="10" fill="none" stroke="currentColor" stroke-width="3"></rect>
-            <path d="M16 29c2-4 4-6 8-6s6 2 8 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
-            <path d="M18 18h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
-          </svg>
-        </div>
-        <span class="brand-name">Budget</span>
-      </div>
-      <div class="topbar-actions">
-        <a href="#help" class="btn btn-ghost btn--icon" data-page="help" aria-label="Help">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </a>
-        <button id="themeToggle2" class="btn btn-ghost btn--icon" type="button" aria-label="Toggle theme">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        </button>
-        <img id="userPhoto" class="avatar avatar--sm" src="https://placehold.co/36x36" alt="User profile" width="36" height="36" />
-        <button id="logoutBtn" class="btn btn-ghost" type="button">Sign out</button>
-      </div>
-    </header>
+    <!-- TOPBAR — populated by html/topbar.html -->
+    <div id="topbarContainer"></div>
 
     <!-- SIDEBAR + CONTENT -->
     <div class="app-body">
 
-      <!-- SIDEBAR (desktop) -->
-      <nav class="sidebar" aria-label="Main navigation">
-        <ul class="nav-list" role="list">
-          <li><a href="#dashboard" class="nav-item" data-page="dashboard" aria-current="page">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            <span>Dashboard</span>
-          </a></li>
-          <li><a href="#budget" class="nav-item" data-page="budget" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            <span>Budget</span>
-          </a></li>
-          <li><a href="#transactions" class="nav-item" data-page="transactions" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-            <span>Transactions</span>
-          </a></li>
-          <li><a href="#accounts" class="nav-item" data-page="accounts" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-            <span>Accounts</span>
-          </a></li>
-          <li><a href="#categories" class="nav-item" data-page="categories" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            <span>Categories</span>
-          </a></li>
-          <li><a href="#reports" class="nav-item" data-page="reports" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-            <span>Reports</span>
-          </a></li>
-          <li><a href="#import" class="nav-item" data-page="import" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span>Import</span>
-          </a></li>
-          <li><a href="#settings" class="nav-item" data-page="settings" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            <span>Settings</span>
-          </a></li>
-          <li><a href="#help" class="nav-item" data-page="help" aria-current="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span>Help</span>
-          </a></li>
-        </ul>
-      </nav>
+      <!-- SIDEBAR (desktop) — populated by html/sidebar.html -->
+      <div id="sidebarContainer"></div>
 
       <!-- MAIN CONTENT — pages injected by partials.js -->
       <main id="main" class="app-content">
         <section class="page" id="dashboard"></section>
+        <section class="page hidden" id="budget" aria-hidden="true"></section>
         <section class="page hidden" id="transactions" aria-hidden="true"></section>
         <section class="page hidden" id="accounts" aria-hidden="true"></section>
         <section class="page hidden" id="categories" aria-hidden="true"></section>
@@ -101,33 +42,8 @@
       </main>
     </div>
 
-    <!-- BOTTOM TAB BAR (mobile) -->
-    <nav class="bottom-tabs" aria-label="Mobile navigation">
-      <a href="#dashboard" class="tab-item" data-page="dashboard" aria-current="page">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span>Dashboard</span>
-      </a>
-      <a href="#budget" class="tab-item" data-page="budget" aria-current="false">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        <span>Budget</span>
-      </a>
-      <a href="#transactions" class="tab-item" data-page="transactions" aria-current="false">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-        <span>Txns</span>
-      </a>
-      <a href="#import" class="tab-item" data-page="import" aria-current="false">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>Import</span>
-      </a>
-      <a href="#settings" class="tab-item" data-page="settings" aria-current="false">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span>Settings</span>
-      </a>
-      <a href="#help" class="tab-item" data-page="help" aria-current="false">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <span>Help</span>
-      </a>
-    </nav>
+    <!-- BOTTOM TAB BAR (mobile) — populated by html/bottom-tabs.html -->
+    <div id="bottomTabsContainer"></div>
 
   </div>
 

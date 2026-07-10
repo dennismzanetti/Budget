@@ -4,15 +4,19 @@
  */
 export async function loadPartials() {
   const partials = [
-    { file: "login",        container: "loggedOutView",  method: "innerHTML" },
-    { file: "dashboard",    container: "dashboard",      method: "outerHTML" },
-    { file: "transactions", container: "transactions",   method: "outerHTML" },
-    { file: "accounts",     container: "accounts",       method: "outerHTML" },
-    { file: "categories",   container: "categories",     method: "outerHTML" },
-    { file: "reports",      container: "reports",        method: "outerHTML" },
-    { file: "import",       container: "import",         method: "outerHTML" },
-    { file: "settings",     container: "settings",       method: "outerHTML" },
-    { file: "help",         container: "help",           method: "outerHTML" }
+    { file: "login",        container: "loggedOutView",      method: "innerHTML" },
+    { file: "topbar",       container: "topbarContainer",    method: "innerHTML" },
+    { file: "sidebar",      container: "sidebarContainer",   method: "innerHTML" },
+    { file: "bottom-tabs",  container: "bottomTabsContainer",method: "innerHTML" },
+    { file: "dashboard",    container: "dashboard",          method: "outerHTML" },
+    { file: "budget",       container: "budget",             method: "outerHTML" },
+    { file: "transactions", container: "transactions",       method: "outerHTML" },
+    { file: "accounts",     container: "accounts",           method: "outerHTML" },
+    { file: "categories",   container: "categories",         method: "outerHTML" },
+    { file: "reports",      container: "reports",            method: "outerHTML" },
+    { file: "import",       container: "import",             method: "outerHTML" },
+    { file: "settings",     container: "settings",           method: "outerHTML" },
+    { file: "help",         container: "help",               method: "outerHTML" }
   ];
 
   await Promise.all(partials.map(async ({ file, container, method }) => {
