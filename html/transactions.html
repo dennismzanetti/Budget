@@ -68,12 +68,24 @@
       <table class="txn-table" aria-label="Transactions">
         <thead>
           <tr>
-            <th scope="col" class="txn-col-date">Date</th>
-            <th scope="col" class="txn-col-desc">Description</th>
-            <th scope="col" class="txn-col-account txn-hide-mobile">Account</th>
-            <th scope="col" class="txn-col-category">Category</th>
-            <th scope="col" class="txn-col-type txn-hide-mobile">Type</th>
-            <th scope="col" class="txn-col-amount">Amount</th>
+            <th scope="col" class="txn-col-date txn-th--sortable" data-col="date" aria-sort="descending">
+              Date <span class="txn-sort-icon" aria-hidden="true">↓</span>
+            </th>
+            <th scope="col" class="txn-col-desc txn-th--sortable" data-col="payee" aria-sort="none">
+              Description <span class="txn-sort-icon" aria-hidden="true">↕</span>
+            </th>
+            <th scope="col" class="txn-col-account txn-hide-mobile txn-th--sortable" data-col="account" aria-sort="none">
+              Account <span class="txn-sort-icon" aria-hidden="true">↕</span>
+            </th>
+            <th scope="col" class="txn-col-category txn-th--sortable" data-col="category" aria-sort="none">
+              Category <span class="txn-sort-icon" aria-hidden="true">↕</span>
+            </th>
+            <th scope="col" class="txn-col-type txn-hide-mobile txn-th--sortable" data-col="type" aria-sort="none">
+              Type <span class="txn-sort-icon" aria-hidden="true">↕</span>
+            </th>
+            <th scope="col" class="txn-col-amount txn-th--sortable" data-col="amount" aria-sort="none">
+              Amount <span class="txn-sort-icon" aria-hidden="true">↕</span>
+            </th>
             <th scope="col" class="txn-col-actions"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>

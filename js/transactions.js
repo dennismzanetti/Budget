@@ -80,9 +80,42 @@ export async function initTransactionsPage(_uid) {
   const summaryIncome = document.getElementById("txnSummaryIncome");
   const summaryExpense= document.getElementById("txnSummaryExpense");
 
-  console.debug("[txn] DOM refs — tbody:", !!tbody, "acctFilter:", !!acctFilter, "catFilter:", !!catFilter, "typeFilter:", !!typeFilter);
-
   if (!tbody) { console.error("[txn] #txnTableBody not found — aborting"); return; }
+
+  // ── Sort state (default: date descending) ─────────────────────────
+  let sortCol = "date";
+  let sortDir = "desc";  // "asc" | "desc"
+
+  // Wire up sortable column headers
+  const sortableHeaders = document.querySelectorAll(".txn-th--sortable");
+  sortableHeaders.forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.col;
+      if (sortCol === col) {
+        sortDir = sortDir === "asc" ? "desc" : "asc";
+      } else {
+        sortCol = col;
+        sortDir = col === "amount" ? "desc" : "asc";
+      }
+      updateSortHeaders();
+      renderTable();
+    });
+  });
+
+  function updateSortHeaders() {
+    sortableHeaders.forEach(th => {
+      const col = th.dataset.col;
+      const icon = th.querySelector(".txn-sort-icon");
+      th.classList.toggle("txn-th--sorted", col === sortCol);
+      th.setAttribute("aria-sort", col === sortCol ? (sortDir === "asc" ? "ascending" : "descending") : "none");
+      if (icon) {
+        icon.textContent = col !== sortCol ? "\u2195" : sortDir === "asc" ? "\u2191" : "\u2193";
+      }
+    });
+  }
+
+  // Set initial header state
+  updateSortHeaders();
 
   // Populate account filter
   if (acctFilter) {
@@ -103,7 +136,6 @@ export async function initTransactionsPage(_uid) {
       accountMap[d.id] = d.data().name ?? d.id;
       allAccountIds.push(d.id);
     });
-    console.debug("[txn] accountMap loaded:", Object.keys(accountMap).length, "accounts", accountMap);
   } catch (e) {
     console.warn("[transactions] could not load account names", e);
   }
@@ -112,7 +144,6 @@ export async function initTransactionsPage(_uid) {
   let catMap = {};
   try {
     catMap = await getCategoriesMap(_uid);
-    console.debug("[txn] catMap loaded:", Object.keys(catMap).length, "categories", catMap);
   } catch (e) {
     console.warn("[transactions] could not load categories", e);
   }
@@ -131,10 +162,8 @@ export async function initTransactionsPage(_uid) {
 
   async function loadTransactions() {
     tbody.innerHTML = `<tr><td colspan="7" class="txn-loading">Loading\u2026</td></tr>`;
-    console.debug("[txn] loadTransactions — querying global transactions collection");
 
     if (allAccountIds.length === 0) {
-      console.warn("[txn] no accounts found — cannot load transactions");
       tbody.innerHTML = `<tr><td colspan="7" class="txn-empty">No accounts found. Please add an account first.</td></tr>`;
       return;
     }
@@ -144,7 +173,6 @@ export async function initTransactionsPage(_uid) {
       const IN_LIMIT = 30;
       const allDocs = [];
 
-      // Firestore "in" queries are limited to 30 values; chunk if needed
       for (let i = 0; i < allAccountIds.length; i += IN_LIMIT) {
         const chunk = allAccountIds.slice(i, i + IN_LIMIT);
         const q = query(txnCol, where("accountId", "in", chunk), orderBy("date", "desc"));
@@ -152,23 +180,50 @@ export async function initTransactionsPage(_uid) {
         snap.docs.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
       }
 
-      // Sort merged results by date desc
-      allDocs.sort((a, b) => {
-        const da = getDateValue(a.date);
-        const db2 = getDateValue(b.date);
-        if (!da && !db2) return 0;
-        if (!da) return 1;
-        if (!db2) return -1;
-        return db2 - da;
-      });
-
       allTxns = allDocs;
-      console.debug("[txn] allTxns loaded:", allTxns.length);
       renderTable();
     } catch (err) {
       console.error("[transactions] loadTransactions error:", err);
       tbody.innerHTML = `<tr><td colspan="7" class="txn-empty">Error loading transactions.</td></tr>`;
     }
+  }
+
+  // ── Sort helper ───────────────────────────────────────────────────
+  function sortRows(rows) {
+    return [...rows].sort((a, b) => {
+      let av, bv;
+      switch (sortCol) {
+        case "date":
+          av = getDateValue(a.date)?.getTime() ?? 0;
+          bv = getDateValue(b.date)?.getTime() ?? 0;
+          break;
+        case "payee":
+          av = (a.payee ?? "").toLowerCase();
+          bv = (b.payee ?? "").toLowerCase();
+          break;
+        case "account":
+          av = (accountMap[a.accountId] ?? "").toLowerCase();
+          bv = (accountMap[b.accountId] ?? "").toLowerCase();
+          break;
+        case "category":
+          av = (catMap[a.categoryId]?.name ?? "").toLowerCase();
+          bv = (catMap[b.categoryId]?.name ?? "").toLowerCase();
+          break;
+        case "type":
+          av = a.type ?? "";
+          bv = b.type ?? "";
+          break;
+        case "amount":
+          av = typeof a.amountCents === "number" ? a.amountCents : 0;
+          bv = typeof b.amountCents === "number" ? b.amountCents : 0;
+          break;
+        default:
+          return 0;
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
   }
 
   // ── Filter + render ───────────────────────────────────────────────
@@ -179,8 +234,6 @@ export async function initTransactionsPage(_uid) {
     const fromVal   = dateFrom?.value ? new Date(dateFrom.value) : null;
     const toVal     = dateTo?.value ? new Date(dateTo.value + "T23:59:59") : null;
     const searchVal = searchInput?.value.trim().toLowerCase() ?? "";
-
-    console.debug("[txn] renderTable — allTxns:", allTxns.length, "active filters:", { acctVal, catVal, typeVal, fromVal, toVal, searchVal });
 
     const filtered = allTxns.filter(t => {
       if (acctVal && t.accountId !== acctVal) return false;
@@ -198,12 +251,6 @@ export async function initTransactionsPage(_uid) {
       return true;
     });
 
-    console.debug("[txn] filtered count:", filtered.length);
-    if (allTxns.length > 0 && filtered.length === 0) {
-      console.warn("[txn] allTxns has data but filtered is empty — check filter values above");
-      console.debug("[txn] sample allTxns[0]:", JSON.stringify(allTxns[0]));
-    }
-
     // Summary
     let totalIncomeCents = 0, totalExpenseCents = 0;
     filtered.forEach(t => {
@@ -220,9 +267,11 @@ export async function initTransactionsPage(_uid) {
       return;
     }
 
-    tbody.innerHTML = filtered.map(t => {
+    const sorted = sortRows(filtered);
+
+    tbody.innerHTML = sorted.map(t => {
       const isIncome = t.type === "income";
-      const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "—");
+      const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "\u2014");
       return `
         <tr class="txn-row" data-id="${t.id}">
           <td class="txn-col-date">${escHtml(formatDate(t.date))}</td>
@@ -245,12 +294,11 @@ export async function initTransactionsPage(_uid) {
         </tr>`;
     }).join("");
 
-    // ── Category inline-save (global collection path) ────────────────
+    // ── Category inline-save ─────────────────────────────────────────
     tbody.querySelectorAll(".txn-category-select").forEach(sel => {
       sel.addEventListener("change", async () => {
         const id    = sel.dataset.id;
         const catId = sel.value;
-        console.debug("[txn] category change — txn id:", id, "new categoryId:", catId);
         try {
           await updateDoc(doc(getDb(), "transactions", id), { categoryId: catId, updatedAt: new Date() });
           const txn = allTxns.find(t => t.id === id);
@@ -265,13 +313,12 @@ export async function initTransactionsPage(_uid) {
       });
     });
 
-    // ── Delete with confirm (global collection path) ──────────────────
+    // ── Delete with confirm ───────────────────────────────────────────
     tbody.querySelectorAll(".txn-delete-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id  = btn.dataset.id;
         const row = tbody.querySelector(`tr[data-id="${id}"]`);
         if (!confirm("Delete this transaction? This cannot be undone.")) return;
-        console.debug("[txn] deleting transaction id:", id);
         try {
           await deleteDoc(doc(getDb(), "transactions", id));
           allTxns = allTxns.filter(t => t.id !== id);
