@@ -10,7 +10,7 @@
  * Exports:
  *   initCategoriesPage(uid)                        — wires up the #categories page UI
  *   populateCategorySelect(uid, selectEl, opts)     — fills a <select> with category options
- *   getCategoriesMap(uid)                           — returns { id -> { name, color } }
+ *   getCategoriesMap(uid)                           — returns { id -> { name, color, emoji } }
  *   ensureCategoryExists(uid, name)                 — finds or auto-creates a category by name
  */
 
@@ -62,12 +62,14 @@ async function fetchCategories() {
 // ── Public helpers ────────────────────────────────────────────────────
 
 /**
- * Returns a map of { categoryId -> { name, color } }.
+ * Returns a map of { categoryId -> { name, color, emoji } }.
  */
 export async function getCategoriesMap(_uid) {
   const cats = await fetchCategories();
   const map = {};
-  cats.forEach(c => { map[c.id] = { name: c.name, color: c.color || "#888888" }; });
+  cats.forEach(c => {
+    map[c.id] = { name: c.name, color: c.color || "#888888", emoji: c.emoji || "" };
+  });
   return map;
 }
 
@@ -83,6 +85,7 @@ export async function ensureCategoryExists(_uid, name) {
   const ref = await addDoc(categoriesRef(), {
     name: trimmed,
     color: nextAutoColor(),
+    emoji: "",
     isActive: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -91,7 +94,7 @@ export async function ensureCategoryExists(_uid, name) {
 }
 
 /**
- * Populates a <select> element with categories.
+ * Populates a <select> element with categories, including emoji prefix.
  */
 export async function populateCategorySelect(_uid, selectEl, opts = {}) {
   if (!selectEl) return;
@@ -101,7 +104,10 @@ export async function populateCategorySelect(_uid, selectEl, opts = {}) {
     const cats = await fetchCategories();
     const options = cats
       .filter(c => c.isActive !== false)
-      .map(c => `<option value="${c.id}"${c.id === currentId ? " selected" : ""}>${escHtml(c.name)}</option>`)
+      .map(c => {
+        const label = c.emoji ? `${c.emoji} ${c.name}` : c.name;
+        return `<option value="${c.id}"${c.id === currentId ? " selected" : ""}>${escHtml(label)}</option>`;
+      })
       .join("");
     selectEl.innerHTML =
       (includeBlank ? '<option value="">\u2014 No category \u2014</option>' : "") + options;
@@ -197,15 +203,12 @@ function buildDonut(canvasId, labels, data, colors) {
 }
 
 // ── Build expanded transactions table for a category card ─────────────
-// Returns a <li class="cat-breakdown__tx-list-row"> with a transactions
-// table matching the transactions page style. Valid child of parent <ul>.
 function buildCardTxList(catId, txns, catsMap) {
   const matching = txns.filter(tx => {
     const txCatId = tx.categoryId || "__none__";
     return txCatId === catId;
   });
 
-  // Sort by date descending
   matching.sort((a, b) => {
     const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
     const db = b.date?.toDate ? b.date.toDate() : new Date(b.date);
@@ -221,14 +224,14 @@ function buildCardTxList(catId, txns, catsMap) {
     return liWrap;
   }
 
-  // Render as a table matching the transactions page layout
   const rows = matching.map(tx => {
     const isIncome = tx.amountCents !== undefined ? tx.type === "income" : (parseFloat(tx.amount) || 0) > 0;
     const absAmt = tx.amountCents !== undefined
       ? tx.amountCents / 100
       : Math.abs(parseFloat(tx.amount) || 0);
     const payee = tx.payee || tx.description || "\u2014";
-    const catInfo = catsMap[tx.categoryId] || { name: "Uncategorized" };
+    const catInfo = catsMap[tx.categoryId] || { name: "Uncategorized", emoji: "" };
+    const catLabel = catInfo.emoji ? `${catInfo.emoji} ${catInfo.name}` : catInfo.name;
     const amtClass = isIncome ? "cat-card-tx__amount--income" : "cat-card-tx__amount--expense";
     const typeClass = isIncome ? "txn-type-badge--income" : "txn-type-badge--expense";
     const typeLabel = isIncome ? "Income" : "Expense";
@@ -237,7 +240,7 @@ function buildCardTxList(catId, txns, catsMap) {
       <tr class="cat-card-tx__row">
         <td class="cat-card-tx__date">${escHtml(fmtDate(tx.date))}</td>
         <td class="cat-card-tx__payee" title="${escHtml(payee)}">${escHtml(payee)}</td>
-        <td class="cat-card-tx__category">${escHtml(catInfo.name)}</td>
+        <td class="cat-card-tx__category">${escHtml(catLabel)}</td>
         <td class="cat-card-tx__type">
           <span class="txn-type-badge ${typeClass}">${typeLabel}</span>
         </td>
@@ -265,8 +268,6 @@ function buildCardTxList(catId, txns, catsMap) {
 }
 
 // ── Build expanded transactions sub-list for a category (breakdown rows) ─
-// Returns a <li class="cat-breakdown__tx-list-row"> wrapping the <ul>,
-// so it is a valid child of the parent <ul> and nextElementSibling works.
 function buildTxList(catId, type, txns, catsMap) {
   const matching = txns.filter(tx => {
     const txCatId = tx.categoryId || "__none__";
@@ -281,14 +282,12 @@ function buildTxList(catId, type, txns, catsMap) {
     return txCatId === catId && txType === type;
   });
 
-  // Sort by date descending
   matching.sort((a, b) => {
     const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
     const db = b.date?.toDate ? b.date.toDate() : new Date(b.date);
     return db - da;
   });
 
-  // Wrap in <li> so the element is a valid child of the parent <ul>
   const liWrap = document.createElement("li");
   liWrap.className = "cat-breakdown__tx-list-row";
   liWrap.dataset.txListFor = catId;
@@ -336,7 +335,6 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMa
   sorted.forEach(([catId, entry], idx) => {
     const pct = total > 0 ? (entry.amount / total) * 100 : 0;
 
-    // ── Row item
     const li = document.createElement("li");
     li.className = "cat-breakdown__row";
     li.dataset.index = idx;
@@ -345,16 +343,16 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMa
     li.setAttribute("role", "button");
     li.setAttribute("tabindex", "0");
     li.setAttribute("aria-expanded", "false");
+    const nameLabel = entry.emoji ? `${entry.emoji} ${entry.name}` : entry.name;
     li.innerHTML = `
       <span class="cat-breakdown__swatch" style="background:${escHtml(entry.color)}"></span>
-      <span class="cat-breakdown__row-name" title="${escHtml(entry.name)}">${escHtml(entry.name)}</span>
+      <span class="cat-breakdown__row-name" title="${escHtml(nameLabel)}">${escHtml(nameLabel)}</span>
       <span class="cat-breakdown__bar-wrap">
         <span class="cat-breakdown__bar" style="width:${pct.toFixed(1)}%;background:${escHtml(entry.color)}"></span>
       </span>
       <span class="cat-breakdown__row-amount ${amtClass}">${fmtCurrency(entry.amount)}</span>
       ${ICON_CHEVRON}`;
 
-    // ── Hover: highlight chart slice
     li.addEventListener("mouseenter", () => {
       if (!li.classList.contains("is-expanded")) li.classList.add("is-highlighted");
       if (chart) {
@@ -371,13 +369,10 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMa
       }
     });
 
-    // ── Click / keyboard: toggle expanded transactions
     function toggleExpand(e) {
-      // Don't fire if clicking a child button
       if (e.target.closest("button")) return;
       const isExpanded = li.classList.contains("is-expanded");
 
-      // Collapse any other open row in this panel
       rowsEl.querySelectorAll(".cat-breakdown__row.is-expanded").forEach(open => {
         if (open !== li) {
           open.classList.remove("is-expanded");
@@ -410,7 +405,6 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMa
 }
 
 // ── Main breakdown renderer ────────────────────────────────────────────
-// Returns { incomeTotals, expenseTotals, txns } so the card list can reflect period data
 async function renderBreakdown(uid, year, month, catsMap) {
   const periodEl      = document.getElementById("catBreakdownPeriod");
   const incomeTotalEl = document.getElementById("catIncomeTotalLabel");
@@ -431,8 +425,7 @@ async function renderBreakdown(uid, year, month, catsMap) {
     txns = [];
   }
 
-  // Aggregate by category
-  const incomeTotals  = {}; // catId -> { name, color, amount }
+  const incomeTotals  = {};
   const expenseTotals = {};
 
   txns.forEach(tx => {
@@ -448,9 +441,9 @@ async function renderBreakdown(uid, year, month, catsMap) {
     }
     if (absAmount === 0) return;
     const catId   = tx.categoryId || "__none__";
-    const catInfo = catsMap[catId] || { name: catId === "__none__" ? "Uncategorized" : catId, color: "#888888" };
+    const catInfo = catsMap[catId] || { name: catId === "__none__" ? "Uncategorized" : catId, color: "#888888", emoji: "" };
     const bucket  = isIncome ? incomeTotals : expenseTotals;
-    if (!bucket[catId]) bucket[catId] = { name: catInfo.name, color: catInfo.color, amount: 0 };
+    if (!bucket[catId]) bucket[catId] = { name: catInfo.name, color: catInfo.color, emoji: catInfo.emoji || "", amount: 0 };
     bucket[catId].amount += absAmount;
   });
 
@@ -465,13 +458,13 @@ async function renderBreakdown(uid, year, month, catsMap) {
 
   const incomeChart  = buildDonut(
     "catIncomeChart",
-    incomeSorted.map(([, v]) => v.name),
+    incomeSorted.map(([, v]) => v.emoji ? `${v.emoji} ${v.name}` : v.name),
     incomeSorted.map(([, v]) => v.amount),
     incomeSorted.map(([, v]) => v.color)
   );
   const expenseChart = buildDonut(
     "catExpenseChart",
-    expenseSorted.map(([, v]) => v.name),
+    expenseSorted.map(([, v]) => v.emoji ? `${v.emoji} ${v.name}` : v.name),
     expenseSorted.map(([, v]) => v.amount),
     expenseSorted.map(([, v]) => v.color)
   );
@@ -483,20 +476,23 @@ async function renderBreakdown(uid, year, month, catsMap) {
 }
 
 // ── Render a single category card ─────────────────────────────────────
-// Fix 1: chevron moved into account-card__info row (flex row with name),
-// given explicit width/height, and removed from actions area.
 function renderCard(c, periodTotal, type) {
   const color = c.color || "#888888";
+  const emoji = c.emoji || "";
   const hasPeriodTotal = periodTotal !== undefined && periodTotal > 0;
   const amtClass = type === "income"
     ? "category-card__period-total--income"
     : type === "expense"
       ? "category-card__period-total--expense"
       : "";
+  const emojiHtml = emoji
+    ? `<span class="category-card__emoji" aria-hidden="true">${escHtml(emoji)}</span>`
+    : "";
   return `
     <li class="account-card account-card--expandable" data-id="${c.id}" role="button" tabindex="0" aria-expanded="false">
       <div class="account-card__info category-card__info-row">
         <span class="category-swatch" style="background:${escHtml(color)}" aria-hidden="true"></span>
+        ${emojiHtml}
         <span class="account-card__name">${escHtml(c.name)}</span>
         <svg class="cat-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
@@ -518,6 +514,10 @@ function renderCard(c, periodTotal, type) {
           <div class="form-field form-field--color">
             <label class="form-label" for="cat-edit-color-${c.id}">Color</label>
             <input id="cat-edit-color-${c.id}" class="form-input form-input--color" type="color" value="${escHtml(color)}" />
+          </div>
+          <div class="form-field form-field--emoji">
+            <label class="form-label" for="cat-edit-emoji-${c.id}">Emoji</label>
+            <input id="cat-edit-emoji-${c.id}" class="form-input form-input--emoji" type="text" value="${escHtml(emoji)}" placeholder="e.g. \uD83C\uDF55" maxlength="4" />
           </div>
         </div>
         <div class="account-edit-error js-cat-edit-error hidden"></div>
@@ -547,19 +547,17 @@ export async function initCategoriesPage(_uid) {
   const saveBtn   = document.getElementById("saveCategoryBtn");
   const nameInput = document.getElementById("newCategoryName");
   const colorInput= document.getElementById("newCategoryColor");
+  const emojiInput= document.getElementById("newCategoryEmoji");
   const addErrEl  = document.getElementById("addCategoryError");
   const prevBtn   = document.getElementById("catBreakdownPrev");
   const nextBtn   = document.getElementById("catBreakdownNext");
 
   if (!listEl) return;
 
-  // ── Breakdown period state ────────────────────────────────────────
   const now = new Date();
   let breakdownYear  = now.getFullYear();
-  let breakdownMonth = now.getMonth(); // 0-based
+  let breakdownMonth = now.getMonth();
 
-  // Holds the latest period data so renderList can annotate cards and
-  // power the card-level expand feature
   let _lastIncomeTotals  = {};
   let _lastExpenseTotals = {};
   let _lastTxns          = [];
@@ -572,7 +570,6 @@ export async function initCategoriesPage(_uid) {
     _lastIncomeTotals  = incomeTotals;
     _lastExpenseTotals = expenseTotals;
     _lastTxns          = txns;
-    // Re-render cards so period totals update
     renderList();
   }
 
@@ -612,7 +609,6 @@ export async function initCategoriesPage(_uid) {
         return;
       }
 
-      // Determine type for color: expense takes priority over income
       listEl.innerHTML = cats.map(c => {
         const expTotal = _lastExpenseTotals[c.id]?.amount;
         const incTotal = _lastIncomeTotals[c.id]?.amount;
@@ -621,18 +617,7 @@ export async function initCategoriesPage(_uid) {
         return renderCard(c, periodTotal, type);
       }).join("");
 
-      // ── Card expand: click to show transactions ──────────────────
-      // Fix 4: find the edit-row sibling by query (not nextElementSibling)
-      // and insert the tx list AFTER the edit row so it doesn't corrupt
-      // the card + edit-row pair. Collapse uses data-tx-list-for query.
       listEl.querySelectorAll(".account-card--expandable").forEach(card => {
-
-        function getEditRow() {
-          return listEl.querySelector(`.js-cat-edit-row[data-id="${card.dataset.id}"]`);
-        }
-        function getOpenTxList() {
-          return listEl.querySelector(`.cat-breakdown__tx-list-row[data-tx-list-for="${card.dataset.id}"]`);
-        }
         function collapseCard(c) {
           c.classList.remove("is-expanded");
           c.setAttribute("aria-expanded", "false");
@@ -641,12 +626,10 @@ export async function initCategoriesPage(_uid) {
         }
 
         card.addEventListener("click", e => {
-          // Don't expand if clicking edit/delete buttons
           if (e.target.closest(".js-edit-category, .js-delete-category")) return;
 
           const isExpanded = card.classList.contains("is-expanded");
 
-          // Collapse any other open card first
           listEl.querySelectorAll(".account-card--expandable.is-expanded").forEach(open => {
             if (open !== card) collapseCard(open);
           });
@@ -656,9 +639,7 @@ export async function initCategoriesPage(_uid) {
           } else {
             card.classList.add("is-expanded");
             card.setAttribute("aria-expanded", "true");
-            // Insert AFTER the edit row (not after the card) so the
-            // edit-row stays connected to its card.
-            const editRow = getEditRow();
+            const editRow = listEl.querySelector(`.js-cat-edit-row[data-id="${card.dataset.id}"]`);
             const anchor = editRow || card;
             const txListItem = buildCardTxList(card.dataset.id, _lastTxns, _lastCatsMap);
             anchor.insertAdjacentElement("afterend", txListItem);
@@ -695,6 +676,7 @@ export async function initCategoriesPage(_uid) {
           const id = form.dataset.id;
           const nameEl  = form.querySelector(`#cat-edit-name-${id}`);
           const colorEl = form.querySelector(`#cat-edit-color-${id}`);
+          const emojiEl = form.querySelector(`#cat-edit-emoji-${id}`);
           const errEl   = form.querySelector(".js-cat-edit-error");
           const name = nameEl?.value.trim();
           if (!name) {
@@ -708,6 +690,7 @@ export async function initCategoriesPage(_uid) {
             await updateDoc(doc(getDb(), "categories", id), {
               name,
               color: colorEl?.value || "#888888",
+              emoji: emojiEl?.value.trim() || "",
               updatedAt: serverTimestamp(),
             });
             renderList();
@@ -755,6 +738,7 @@ export async function initCategoriesPage(_uid) {
     addForm?.classList.add("hidden");
     addBtn?.classList.remove("hidden");
     if (nameInput) nameInput.value = "";
+    if (emojiInput) emojiInput.value = "";
     clearAddError();
   });
 
@@ -762,6 +746,7 @@ export async function initCategoriesPage(_uid) {
     clearAddError();
     const name  = nameInput?.value.trim();
     const color = colorInput?.value || nextAutoColor();
+    const emoji = emojiInput?.value.trim() || "";
     if (!name) {
       showAddError("Category name is required.");
       nameInput?.focus();
@@ -770,7 +755,7 @@ export async function initCategoriesPage(_uid) {
     saveBtn.disabled = true;
     try {
       await addDoc(categoriesRef(), {
-        name, color,
+        name, color, emoji,
         isActive: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -778,6 +763,7 @@ export async function initCategoriesPage(_uid) {
       addForm?.classList.add("hidden");
       addBtn?.classList.remove("hidden");
       if (nameInput) nameInput.value = "";
+      if (emojiInput) emojiInput.value = "";
       renderList();
       refreshBreakdown();
     } catch (err) {
@@ -788,6 +774,5 @@ export async function initCategoriesPage(_uid) {
     }
   });
 
-  // Initial load — breakdown first so cards have period totals on first render
   await refreshBreakdown();
 }

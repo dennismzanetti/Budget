@@ -50,9 +50,10 @@ function getDateValue(val) {
 }
 
 function categorySelect(currentCategoryId, rowId, catMap) {
-  const opts = Object.entries(catMap).map(([id, cat]) =>
-    `<option value="${escHtml(id)}"${id === currentCategoryId ? " selected" : ""}>${escHtml(cat.name)}</option>`
-  ).join("");
+  const opts = Object.entries(catMap).map(([id, cat]) => {
+    const label = cat.emoji ? `${cat.emoji} ${cat.name}` : cat.name;
+    return `<option value="${escHtml(id)}"${id === currentCategoryId ? " selected" : ""}>${escHtml(label)}</option>`;
+  }).join("");
   return `<select class="txn-category-select" data-id="${rowId}">
     <option value="">-- none --</option>
     ${opts}
@@ -155,7 +156,10 @@ export async function initTransactionsPage(_uid) {
     catFilter.innerHTML =
       '<option value="">All Categories</option>' +
       Object.entries(catMap)
-        .map(([id, cat]) => `<option value="${escHtml(id)}">${escHtml(cat.name)}</option>`)
+        .map(([id, cat]) => {
+          const label = cat.emoji ? `${cat.emoji} ${cat.name}` : cat.name;
+          return `<option value="${escHtml(id)}">${escHtml(label)}</option>`;
+        })
         .join("");
   }
 
@@ -171,7 +175,6 @@ export async function initTransactionsPage(_uid) {
     }
 
     try {
-      // Root-level transactions collection shared across all users
       const txnCol = collection(getDb(), "transactions");
       const IN_LIMIT = 30;
       const allDocs = [];
@@ -318,7 +321,6 @@ export async function initTransactionsPage(_uid) {
         const id    = sel.dataset.id;
         const catId = sel.value;
         try {
-          // Root-level transactions collection
           await updateDoc(doc(getDb(), "transactions", id), { categoryId: catId, updatedAt: new Date() });
           const txn = allTxns.find(t => t.id === id);
           if (txn) txn.categoryId = catId;
@@ -339,7 +341,6 @@ export async function initTransactionsPage(_uid) {
         const row = tbody.querySelector(`tr[data-id="${id}"]`);
         if (!confirm("Delete this transaction? This cannot be undone.")) return;
         try {
-          // Root-level transactions collection
           await deleteDoc(doc(getDb(), "transactions", id));
           allTxns = allTxns.filter(t => t.id !== id);
           row?.remove();
