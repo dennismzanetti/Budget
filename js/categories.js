@@ -197,6 +197,75 @@ function buildDonut(canvasId, labels, data, colors) {
 }
 
 // ── Build expanded transactions sub-list for a category ───────────────
+// Builds a combined income+expense list for the category card expand feature.
+// Returns a <li class="cat-breakdown__tx-list-row"> wrapping the table,
+// so it is a valid child of the parent <ul>.
+function buildCardTxList(catId, txns, catsMap) {
+  const matching = txns.filter(tx => {
+    const txCatId = tx.categoryId || "__none__";
+    return txCatId === catId;
+  });
+
+  // Sort by date descending
+  matching.sort((a, b) => {
+    const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+    const db = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+    return db - da;
+  });
+
+  const liWrap = document.createElement("li");
+  liWrap.className = "cat-breakdown__tx-list-row";
+  liWrap.dataset.txListFor = catId;
+
+  if (matching.length === 0) {
+    liWrap.innerHTML = `<div class="cat-breakdown__tx-list"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
+    return liWrap;
+  }
+
+  // Render as a table matching the transactions page layout
+  const rows = matching.map(tx => {
+    const isIncome = tx.amountCents !== undefined ? tx.type === "income" : (parseFloat(tx.amount) || 0) > 0;
+    const absAmt = tx.amountCents !== undefined
+      ? tx.amountCents / 100
+      : Math.abs(parseFloat(tx.amount) || 0);
+    const payee = tx.payee || tx.description || "\u2014";
+    const catInfo = catsMap[tx.categoryId] || { name: "Uncategorized" };
+    const amtClass = isIncome ? "cat-card-tx__amount--income" : "cat-card-tx__amount--expense";
+    const typeClass = isIncome ? "txn-type-badge--income" : "txn-type-badge--expense";
+    const typeLabel = isIncome ? "Income" : "Expense";
+    const amtSign = isIncome ? "" : "-";
+    return `
+      <tr class="cat-card-tx__row">
+        <td class="cat-card-tx__date">${escHtml(fmtDate(tx.date))}</td>
+        <td class="cat-card-tx__payee" title="${escHtml(payee)}">${escHtml(payee)}</td>
+        <td class="cat-card-tx__category">${escHtml(catInfo.name)}</td>
+        <td class="cat-card-tx__type">
+          <span class="txn-type-badge ${typeClass}">${typeLabel}</span>
+        </td>
+        <td class="cat-card-tx__amount ${amtClass}">${amtSign}${fmtCurrency(absAmt)}</td>
+      </tr>`;
+  }).join("");
+
+  liWrap.innerHTML = `
+    <div class="cat-breakdown__tx-list cat-card-tx__wrapper">
+      <table class="cat-card-tx__table">
+        <thead>
+          <tr>
+            <th class="cat-card-tx__th">Date</th>
+            <th class="cat-card-tx__th">Payee</th>
+            <th class="cat-card-tx__th">Category</th>
+            <th class="cat-card-tx__th">Type</th>
+            <th class="cat-card-tx__th cat-card-tx__th--amount">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  return liWrap;
+}
+
+// ── Build expanded transactions sub-list for a category (breakdown rows) ─
 // Returns a <li class="cat-breakdown__tx-list-row"> wrapping the <ul>,
 // so it is a valid child of the parent <ul> and nextElementSibling works.
 function buildTxList(catId, type, txns, catsMap) {
@@ -342,7 +411,7 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMa
 }
 
 // ── Main breakdown renderer ────────────────────────────────────────────
-// Returns { incomeTotals, expenseTotals } so the card list can reflect period data
+// Returns { incomeTotals, expenseTotals, txns } so the card list can reflect period data
 async function renderBreakdown(uid, year, month, catsMap) {
   const periodEl      = document.getElementById("catBreakdownPeriod");
   const incomeTotalEl = document.getElementById("catIncomeTotalLabel");
@@ -350,7 +419,7 @@ async function renderBreakdown(uid, year, month, catsMap) {
   const incomeRowsEl  = document.getElementById("catIncomeRows");
   const expRowsEl     = document.getElementById("catExpenseRows");
 
-  if (!periodEl) return { incomeTotals: {}, expenseTotals: {} };
+  if (!periodEl) return { incomeTotals: {}, expenseTotals: {}, txns: [] };
 
   const monthName = new Date(year, month, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
   periodEl.textContent = monthName;
@@ -411,7 +480,7 @@ async function renderBreakdown(uid, year, month, catsMap) {
   if (incomeRowsEl)  renderBreakdownRows(incomeRowsEl,  incomeTotals,  incomeTotal,  incomeChart,  "income",  txns, catsMap);
   if (expRowsEl)     renderBreakdownRows(expRowsEl,     expenseTotals, expenseTotal, expenseChart, "expense", txns, catsMap);
 
-  return { incomeTotals, expenseTotals };
+  return { incomeTotals, expenseTotals, txns };
 }
 
 // ── Render a single category card (with optional period total) ────────
@@ -424,7 +493,7 @@ function renderCard(c, periodTotal, type) {
       ? "category-card__period-total--expense"
       : "";
   return `
-    <li class="account-card" data-id="${c.id}">
+    <li class="account-card account-card--expandable" data-id="${c.id}" role="button" tabindex="0" aria-expanded="false">
       <div class="account-card__info">
         <span class="category-swatch" style="background:${escHtml(color)}" aria-hidden="true"></span>
         <span class="account-card__name">${escHtml(c.name)}</span>
@@ -433,8 +502,9 @@ function renderCard(c, periodTotal, type) {
         ${hasPeriodTotal ? `<span class="category-card__period-total ${amtClass}">${fmtCurrency(periodTotal)}</span>` : ""}
       </div>
       <div class="account-card__actions">
-        <button class="btn btn-ghost btn-sm js-edit-category" data-id="${c.id}" title="Edit category">${ICON_EDIT}</button>
-        <button class="btn btn-ghost btn-sm js-delete-category" data-id="${c.id}" title="Delete category">${ICON_DELETE}</button>
+        <button class="btn btn-ghost btn-sm js-edit-category" data-id="${c.id}" title="Edit category" aria-label="Edit category">${ICON_EDIT}</button>
+        <button class="btn btn-ghost btn-sm js-delete-category" data-id="${c.id}" title="Delete category" aria-label="Delete category">${ICON_DELETE}</button>
+        <span class="cat-breakdown__chevron-wrap" aria-hidden="true">${ICON_CHEVRON}</span>
       </div>
     </li>
     <li class="account-edit-row js-cat-edit-row hidden" data-id="${c.id}">
@@ -487,15 +557,20 @@ export async function initCategoriesPage(_uid) {
   let breakdownYear  = now.getFullYear();
   let breakdownMonth = now.getMonth(); // 0-based
 
-  // Holds the latest period totals so renderList can annotate cards
+  // Holds the latest period data so renderList can annotate cards and
+  // power the card-level expand feature
   let _lastIncomeTotals  = {};
   let _lastExpenseTotals = {};
+  let _lastTxns          = [];
+  let _lastCatsMap       = {};
 
   async function refreshBreakdown() {
     const catsMap = await getCategoriesMap(_uid);
-    const { incomeTotals, expenseTotals } = await renderBreakdown(_uid, breakdownYear, breakdownMonth, catsMap);
+    _lastCatsMap = catsMap;
+    const { incomeTotals, expenseTotals, txns } = await renderBreakdown(_uid, breakdownYear, breakdownMonth, catsMap);
     _lastIncomeTotals  = incomeTotals;
     _lastExpenseTotals = expenseTotals;
+    _lastTxns          = txns;
     // Re-render cards so period totals update
     renderList();
   }
@@ -544,6 +619,48 @@ export async function initCategoriesPage(_uid) {
         const type = expTotal !== undefined ? "expense" : incTotal !== undefined ? "income" : null;
         return renderCard(c, periodTotal, type);
       }).join("");
+
+      // ── Card expand: click to show transactions ──────────────────
+      listEl.querySelectorAll(".account-card--expandable").forEach(card => {
+        card.addEventListener("click", e => {
+          // Don't expand if clicking edit/delete buttons
+          if (e.target.closest(".js-edit-category, .js-delete-category")) return;
+
+          const id = card.dataset.id;
+          const isExpanded = card.classList.contains("is-expanded");
+
+          // Collapse any other open card
+          listEl.querySelectorAll(".account-card--expandable.is-expanded").forEach(open => {
+            if (open !== card) {
+              open.classList.remove("is-expanded");
+              open.setAttribute("aria-expanded", "false");
+              const next = open.nextElementSibling;
+              if (next?.dataset.txListFor) next.remove();
+            }
+          });
+
+          if (isExpanded) {
+            card.classList.remove("is-expanded");
+            card.setAttribute("aria-expanded", "false");
+            const next = card.nextElementSibling;
+            if (next?.dataset.txListFor) next.remove();
+          } else {
+            card.classList.add("is-expanded");
+            card.setAttribute("aria-expanded", "true");
+            // Insert after this card but before the edit row
+            const txListItem = buildCardTxList(id, _lastTxns, _lastCatsMap);
+            card.insertAdjacentElement("afterend", txListItem);
+          }
+        });
+
+        card.addEventListener("keydown", e => {
+          if (e.key === "Enter" || e.key === " ") {
+            if (e.target.closest(".js-edit-category, .js-delete-category")) return;
+            e.preventDefault();
+            card.click();
+          }
+        });
+      });
 
       listEl.querySelectorAll(".js-edit-category").forEach(btn => {
         btn.addEventListener("click", () => {

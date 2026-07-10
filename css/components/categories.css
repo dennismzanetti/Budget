@@ -219,7 +219,7 @@ html[data-theme="dark"] .cat-breakdown__row-amount--expense {
   transform: rotate(180deg);
 }
 
-/* ── Expanded transactions sub-list ─────────────────────────────── */
+/* ── Expanded transactions sub-list (breakdown rows) ────────────── */
 .cat-breakdown__tx-list {
   list-style: none;
   margin: 0;
@@ -298,4 +298,145 @@ html[data-theme="dark"] .cat-breakdown__tx-amount--expense {
   color: var(--muted);
   font-size: 0.85rem;
   padding: 1.5rem 0;
+}
+
+/* ── Category card expand feature ───────────────────────────────── */
+
+/* Make the card clickable */
+.account-card--expandable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+}
+
+.account-card--expandable:hover {
+  background: var(--surface-2, #f3f3f3);
+}
+
+.account-card--expandable.is-expanded {
+  background: var(--surface-2, #f3f3f3);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Chevron inside the card action area */
+.cat-breakdown__chevron-wrap {
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.account-card--expandable .cat-breakdown__chevron {
+  transition: transform 0.2s ease;
+}
+
+.account-card--expandable.is-expanded .cat-breakdown__chevron {
+  transform: rotate(180deg);
+}
+
+/* ── Card transaction table (transactions-page style) ────────────── */
+
+.cat-card-tx__wrapper {
+  /* Override the ul-style from cat-breakdown__tx-list */
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  overflow-x: auto;
+  animation: cat-expand 0.18s ease;
+}
+
+.cat-card-tx__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.cat-card-tx__th {
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--surface-2);
+}
+
+.cat-card-tx__th--amount {
+  text-align: right;
+}
+
+.cat-card-tx__row {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.cat-card-tx__row:last-child {
+  border-bottom: none;
+}
+
+.cat-card-tx__row:hover {
+  background: var(--surface, #fff);
+}
+
+.cat-card-tx__date {
+  padding: 7px 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.cat-card-tx__payee {
+  padding: 7px 10px;
+  color: var(--text);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-card-tx__category {
+  padding: 7px 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.cat-card-tx__type {
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.cat-card-tx__amount {
+  padding: 7px 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cat-card-tx__amount--income {
+  color: #437a22;
+}
+html[data-theme="dark"] .cat-card-tx__amount--income {
+  color: #6daa45;
+}
+
+.cat-card-tx__amount--expense {
+  color: #a13544;
+}
+html[data-theme="dark"] .cat-card-tx__amount--expense {
+  color: #dd6974;
+}
+
+@media (max-width: 640px) {
+  .cat-card-tx__category,
+  .cat-card-tx__type {
+    display: none;
+  }
 }
