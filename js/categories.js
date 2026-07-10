@@ -254,17 +254,29 @@ async function renderBreakdown(year, month, catsMap) {
   }
 
   // Aggregate by category
+  // Supports both imported shape (amountCents + type) and legacy float (amount)
   const incomeTotals  = {}; // catId -> { name, color, amount }
   const expenseTotals = {};
 
   txns.forEach(tx => {
-    const amount = parseFloat(tx.amount) || 0;
-    if (amount === 0) return;
+    let absAmount, isIncome;
+    if (tx.amountCents !== undefined) {
+      // Imported shape: amountCents is always positive; type is "income" or "expense"
+      absAmount = tx.amountCents / 100;
+      isIncome  = tx.type === "income";
+    } else {
+      // Legacy shape: signed float amount
+      const legacy = parseFloat(tx.amount) || 0;
+      if (legacy === 0) return;
+      absAmount = Math.abs(legacy);
+      isIncome  = legacy > 0;
+    }
+    if (absAmount === 0) return;
     const catId   = tx.categoryId || "__none__";
     const catInfo = catsMap[catId] || { name: catId === "__none__" ? "Uncategorized" : catId, color: "#888888" };
-    const bucket  = amount > 0 ? incomeTotals : expenseTotals;
+    const bucket  = isIncome ? incomeTotals : expenseTotals;
     if (!bucket[catId]) bucket[catId] = { name: catInfo.name, color: catInfo.color, amount: 0 };
-    bucket[catId].amount += Math.abs(amount);
+    bucket[catId].amount += absAmount;
   });
 
   const incomeTotal  = Object.values(incomeTotals).reduce((s, v) => s + v.amount, 0);
