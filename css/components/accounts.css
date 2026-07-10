@@ -362,6 +362,18 @@ html[data-theme="dark"] .account-delete-confirm-btn:hover {
   line-height: 1.5;
 }
 
+/* ── Category card meta (period total) ───────────────────────────────── */
+.category-card__meta {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.category-card__period-total {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .account-edit-fields {
