@@ -109,9 +109,9 @@
   gap: 8px;
   padding: 40px 24px;
   min-height: 160px;
-  border: 2px dashed var(--border, #d9e2ec);
+  border: 2px dashed color-mix(in srgb, var(--primary, #0f766e) 45%, transparent);
   border-radius: 12px;
-  background: var(--surface, #ffffff);
+  background: color-mix(in srgb, var(--primary, #0f766e) 3%, var(--surface, #ffffff));
   text-align: center;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease;
@@ -119,7 +119,7 @@
 .import-dropzone:hover,
 .import-dropzone:focus-visible {
   border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 4%, var(--surface, #ffffff));
+  background: color-mix(in srgb, var(--primary, #0f766e) 6%, var(--surface, #ffffff));
   outline: none;
 }
 .import-dropzone--drag {
@@ -133,7 +133,7 @@
 }
 
 .import-dropzone__icon {
-  color: var(--muted, #5e6a77);
+  color: color-mix(in srgb, var(--primary, #0f766e) 70%, var(--muted, #5e6a77));
   margin-bottom: 4px;
 }
 .import-dropzone--has-file .import-dropzone__icon {
