@@ -59,8 +59,20 @@
         <input id="newCategoryColor" class="form-input form-input--color" type="color" value="#4f98a3" />
       </div>
       <div class="form-field form-field--emoji">
-        <label class="form-label" for="newCategoryEmoji">Emoji</label>
-        <input id="newCategoryEmoji" class="form-input form-input--emoji" type="text" placeholder="e.g. 🛒" maxlength="4" />
+        <label class="form-label">Emoji</label>
+        <!-- Hidden input keeps the value — JS in categories.js reads this -->
+        <input id="newCategoryEmoji" type="hidden" value="" />
+        <div class="emoji-picker-wrap" id="newEmojiPickerWrap">
+          <button type="button" class="emoji-picker-trigger" id="newEmojiPickerBtn" aria-haspopup="true" aria-expanded="false" aria-label="Choose emoji">
+            <span class="emoji-picker-trigger__display" id="newEmojiDisplay">😊</span>
+            <span class="emoji-picker-trigger__caret">▾</span>
+          </button>
+          <div class="emoji-picker-popup hidden" id="newEmojiPickerPopup" role="dialog" aria-label="Emoji picker">
+            <div class="emoji-picker-popup__tabs" id="newEmojiTabs"></div>
+            <div class="emoji-picker-popup__grid" id="newEmojiGrid"></div>
+            <button type="button" class="emoji-picker-popup__clear" id="newEmojiClear">Clear</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="addCategoryError" class="form-error hidden" role="alert"></div>
