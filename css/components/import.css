@@ -62,6 +62,7 @@
   flex-direction: column;
   gap: var(--space-5);
   margin-bottom: var(--space-4);
+  border: 1px solid var(--border, #d4d1ca);
 }
 
 .import-field {
