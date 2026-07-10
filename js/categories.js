@@ -312,7 +312,7 @@ function renderCard(c, periodTotal) {
         <span class="category-swatch" style="background:${escHtml(color)}" aria-hidden="true"></span>
         <span class="account-card__name">${escHtml(c.name)}</span>
       </div>
-      <div class="account-card__meta">
+      <div class="account-card__meta category-card__meta">
         ${hasPeriodTotal ? `<span class="category-card__period-total">${fmtCurrency(periodTotal)}</span>` : ""}
       </div>
       <div class="account-card__actions">
