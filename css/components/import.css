@@ -1,336 +1,373 @@
-/* ── Import Page ────────────────────────────────────────────────────────── */
+/* ── Import Page ─────────────────────────────────────────────────────────── */
 
-/* Instructions card */
-.import-instructions {
-  margin-bottom: var(--space-4);
-}
-
-.import-instructions__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
-}
-
-.import-bank-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm, 12px);
-  background: var(--surface-2, #eef3f8);
-  color: var(--primary, #0f766e);
-  flex-shrink: 0;
-}
-
-.import-steps {
-  list-style: none;
+#import {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: 0;
+  gap: 1.5rem;
+  max-width: 560px;
 }
 
-.import-steps li {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  font-size: 0.9rem;
-  color: var(--text, #18212b);
-  line-height: 1.5;
+/* ── Page title ─────────────────────────────────────────────────────────── */
+
+#import .page-title {
+  margin-bottom: 0;
 }
 
-.import-step-num {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--primary, #0f766e);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-top: 0.1rem;
-}
+/* ── Upload card ─────────────────────────────────────────────────────────── */
 
-/* Upload card */
 .import-upload-card {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-bottom: var(--space-4);
-  border: 1px solid var(--border, #d9e2ec);
+  gap: 1.5rem;
+  padding: 2rem;
 }
+
+.import-upload-card .eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin: 0 0 0.2rem;
+}
+
+.import-upload-card h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ── Field rows ──────────────────────────────────────────────────────────── */
 
 .import-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .import-label {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text, #18212b);
+  color: var(--muted);
+  letter-spacing: 0.02em;
 }
 
-/* Styled account dropdown */
+/* ── Account dropdown ───────────────────────────────────────────────────── */
+
 .import-select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding: 0.6rem 2.5rem 0.6rem 0.85rem;
-  border: 1.5px solid var(--border, #d9e2ec);
-  border-radius: var(--radius-sm, 12px);
-  background-color: var(--surface, #ffffff);
+  width: 100%;
+  padding: 0.65rem 2.5rem 0.65rem 0.9rem;
+  background-color: var(--surface);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235e6a77' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 16px;
-  color: var(--text, #18212b);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.925rem;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.import-select:hover {
+  border-color: color-mix(in srgb, var(--primary) 60%, var(--border));
+}
+
+.import-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+[data-theme="dark"] .import-select {
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a8b5c2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* ── Plain file input ────────────────────────────────────────────────────── */
+
+.import-file-input-plain {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
   font-size: 0.9rem;
   cursor: pointer;
   transition: border-color 150ms ease, box-shadow 150ms ease;
-  width: 100%;
 }
-.import-select:focus {
+
+.import-file-input-plain:hover {
+  border-color: color-mix(in srgb, var(--primary) 60%, var(--border));
+}
+
+.import-file-input-plain:focus {
   outline: none;
-  border-color: var(--primary, #0f766e);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0f766e) 20%, transparent);
-}
-.import-select:hover {
-  border-color: color-mix(in srgb, var(--primary, #0f766e) 60%, var(--border, #d9e2ec));
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
-/* Dark mode: swap chevron color to light gray */
-[data-theme="dark"] .import-select {
-  background-color: var(--surface, #1a232d);
-  border-color: var(--border, #304252);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a0adb8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  color: var(--text, #e2e8f0);
-}
-
-.import-hint {
-  font-size: 0.78rem;
-  color: var(--muted, #5e6a77);
-}
-
-/* Drop zone
-   Base border uses a clearly visible dashed outline in both light and dark mode.
-   Hover / drag-over / has-file states brighten to --primary for clear feedback. */
-.import-dropzone {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px 24px;
-  min-height: 160px;
-  border: 2px dashed var(--border, #d9e2ec);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--primary, #0f766e) 5%, var(--surface, #ffffff));
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
-}
-.import-dropzone:hover,
-.import-dropzone:focus-visible {
-  border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 10%, var(--surface, #ffffff));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0f766e) 20%, transparent);
-  outline: none;
-}
-.import-dropzone--drag {
-  border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 15%, var(--surface, #ffffff));
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #0f766e) 25%, transparent);
-}
-.import-dropzone--has-file {
-  border-style: solid;
-  border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 10%, var(--surface, #ffffff));
-}
-
-/* Dark mode: ensure dashed border is clearly visible on dark surfaces */
-[data-theme="dark"] .import-dropzone {
-  border-color: var(--border, #3d5166);
-  background: color-mix(in srgb, var(--primary, #4f98a3) 8%, var(--surface, #1a232d));
-}
-[data-theme="dark"] .import-dropzone:hover,
-[data-theme="dark"] .import-dropzone:focus-visible {
-  border-color: var(--primary, #4f98a3);
-  background: color-mix(in srgb, var(--primary, #4f98a3) 14%, var(--surface, #1a232d));
-}
-
-.import-dropzone__icon {
-  color: var(--primary, #0f766e);
-  margin-bottom: 4px;
-}
-
-.import-dropzone__primary {
-  font-size: 0.95rem;
+.import-file-input-plain::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.3rem 0.85rem;
+  background: var(--secondary);
+  color: var(--secondary-text);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text, #18212b);
-  max-width: unset;
-}
-
-.import-dropzone__link {
-  color: var(--primary, #0f766e);
-  text-decoration: underline;
   cursor: pointer;
+  transition: background 150ms ease;
 }
 
-/* Hidden file input — covers dropzone for click-to-browse */
-.import-file-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
+.import-file-input-plain::file-selector-button:hover {
+  background: color-mix(in srgb, var(--primary) 18%, var(--secondary));
 }
 
-/* File preview pill */
+/* ── File preview pill ───────────────────────────────────────────────────── */
+
 .import-file-preview {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border: 1px solid var(--border, #d9e2ec);
-  border-radius: var(--radius-sm, 12px);
-  background: var(--surface-2, #eef3f8);
-  color: var(--text, #18212b);
-  font-size: 0.85rem;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.875rem;
 }
+
 .import-file-preview svg {
   flex-shrink: 0;
-  color: var(--primary, #0f766e);
+  color: var(--primary);
 }
+
 .import-file-name {
+  font-weight: 500;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 500;
 }
+
 .import-file-size {
-  color: var(--muted, #5e6a77);
-  white-space: nowrap;
   font-size: 0.78rem;
+  color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
+
 .import-file-clear {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   width: 24px;
   height: 24px;
-  border-radius: 9999px;
-  color: var(--muted, #5e6a77);
-  transition: background 120ms ease, color 120ms ease;
+  border-radius: 999px;
+  color: var(--muted);
+  transition: background 150ms ease, color 150ms ease;
 }
+
 .import-file-clear:hover {
-  background: var(--surface-2, #eef3f8);
-  color: var(--text, #18212b);
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  color: var(--text);
 }
 
-/* Error banner */
+/* ── Error banner ────────────────────────────────────────────────────────── */
+
 .import-error {
-  padding: 12px 16px;
-  border-radius: var(--radius-sm, 12px);
-  background: color-mix(in srgb, #a12c7b 8%, var(--surface, #ffffff));
-  border: 1px solid color-mix(in srgb, #a12c7b 25%, transparent);
-  color: #a12c7b;
-  font-size: 0.85rem;
-  line-height: 1.5;
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, #dc2626 8%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, #dc2626 28%, transparent);
+  border-radius: var(--radius-sm);
+  color: #b91c1c;
+  font-size: 0.875rem;
+  line-height: 1.55;
 }
 
-/* Actions row — extra top space to separate from the file picker */
+[data-theme="dark"] .import-error {
+  color: #fca5a5;
+  background: color-mix(in srgb, #dc2626 12%, var(--surface));
+  border-color: color-mix(in srgb, #dc2626 35%, var(--border));
+}
+
+/* ── Actions row ─────────────────────────────────────────────────────────── */
+
 .import-actions {
   display: flex;
-  gap: 12px;
+  gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
-  margin-top: var(--space-4);
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--border);
 }
 
-/* Progress card */
+/* ── Progress card ───────────────────────────────────────────────────────── */
+
 .import-progress-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: var(--space-4);
+  gap: 1.1rem;
+  padding: 2rem;
+}
+
+.import-progress-card .eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin: 0 0 0.1rem;
+}
+
+.import-progress-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .import-progress-bar-wrap {
+  width: 100%;
   height: 8px;
-  border-radius: 9999px;
-  background: var(--surface-2, #eef3f8);
+  background: var(--surface-2);
+  border-radius: 999px;
   overflow: hidden;
+  border: 1px solid var(--border);
 }
 
 .import-progress-bar-fill {
   height: 100%;
-  border-radius: 9999px;
-  background: var(--primary, #0f766e);
+  background: var(--primary);
+  border-radius: 999px;
   width: 0%;
-  transition: width 400ms ease;
+  transition: width 380ms ease;
 }
 
 .import-progress-msg {
-  font-size: 0.85rem;
-  color: var(--muted, #5e6a77);
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 0;
 }
 
-/* Result card */
+/* ── Result card ─────────────────────────────────────────────────────────── */
+
 .import-result-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   align-items: center;
   text-align: center;
-  margin-bottom: var(--space-4);
+  gap: 0.9rem;
+  padding: 2.25rem 2rem;
+}
+
+.import-result-card h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .import-result-icon {
-  font-size: 2.5rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 0.25rem;
 }
+
+.import-result-icon--success { color: var(--primary); }
+.import-result-icon--warn    { color: #d97706; }
+
+.import-result-card .subtle {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Result stats ───────────────────────────────────────────────────────── */
 
 .import-result-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 24px;
-  width: 100%;
-  max-width: 360px;
-  text-align: left;
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
 }
 
-.import-result-stats dt {
-  font-size: 0.78rem;
-  color: var(--muted, #5e6a77);
-  font-weight: 500;
+.import-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.875rem 1.25rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-width: 86px;
+}
+
+.import-stat dt {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
-.import-result-stats dd {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text, #18212b);
+.import-stat dd {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.1;
 }
+
+.stat--green dd { color: var(--primary); }
+.stat--muted dd { color: var(--muted); }
+
+/* ── Result errors ──────────────────────────────────────────────────────── */
 
 .import-result-errors {
   width: 100%;
   text-align: left;
-  font-size: 0.82rem;
-  color: var(--muted, #5e6a77);
-  background: var(--surface-2, #eef3f8);
-  border-radius: var(--radius-sm, 12px);
-  padding: 12px 16px;
+  padding: 0.875rem 1rem;
+  background: color-mix(in srgb, #d97706 8%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, #d97706 28%, var(--border));
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
   max-height: 160px;
   overflow-y: auto;
+}
+
+.import-error-heading {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.import-result-errors ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--muted);
+}
+
+.import-result-card .import-actions {
+  justify-content: center;
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
 }
