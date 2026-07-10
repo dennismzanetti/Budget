@@ -36,7 +36,6 @@ function formatDate(val) {
   return isNaN(d) ? val : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Convert integer cents to a display dollar string (e.g. 1099 → "10.99") */
 function centsToDisplay(amountCents) {
   const n = typeof amountCents === "number" ? amountCents : parseInt(amountCents, 10);
   if (isNaN(n)) return "0.00";
@@ -50,7 +49,6 @@ function getDateValue(val) {
   return isNaN(d) ? null : d;
 }
 
-/** Build a <select> for categories using the live categories map */
 function categorySelect(currentCategoryId, rowId, catMap) {
   const opts = Object.entries(catMap).map(([id, cat]) =>
     `<option value="${escHtml(id)}"${id === currentCategoryId ? " selected" : ""}>${escHtml(cat.name)}</option>`
@@ -59,6 +57,12 @@ function categorySelect(currentCategoryId, rowId, catMap) {
     <option value="">-- none --</option>
     ${opts}
   </select>`;
+}
+
+/** Returns true if any filter is currently active */
+function hasActiveFilters(acctFilter, catFilter, typeFilter, dateFrom, dateTo, searchInput) {
+  return !!((acctFilter?.value) || (catFilter?.value) || (typeFilter?.value) ||
+    (dateFrom?.value) || (dateTo?.value) || (searchInput?.value.trim()));
 }
 
 export async function initTransactionsPage(_uid) {
@@ -79,14 +83,14 @@ export async function initTransactionsPage(_uid) {
   const summaryCount  = document.getElementById("txnSummaryCount");
   const summaryIncome = document.getElementById("txnSummaryIncome");
   const summaryExpense= document.getElementById("txnSummaryExpense");
+  const summaryNet    = document.getElementById("txnSummaryNet");
 
   if (!tbody) { console.error("[txn] #txnTableBody not found — aborting"); return; }
 
-  // ── Sort state (default: date descending) ─────────────────────────
+  // ── Sort state ────────────────────────────────────────────────────
   let sortCol = "date";
-  let sortDir = "desc";  // "asc" | "desc"
+  let sortDir = "desc";
 
-  // Wire up sortable column headers
   const sortableHeaders = document.querySelectorAll(".txn-th--sortable");
   sortableHeaders.forEach(th => {
     th.addEventListener("click", () => {
@@ -114,7 +118,6 @@ export async function initTransactionsPage(_uid) {
     });
   }
 
-  // Set initial header state
   updateSortHeaders();
 
   // Populate account filter
@@ -127,7 +130,7 @@ export async function initTransactionsPage(_uid) {
     acctFilter.value = "";
   }
 
-  // ── Account name cache (global accounts collection) ───────────────
+  // ── Account name cache ────────────────────────────────────────────
   let accountMap = {};
   let allAccountIds = [];
   try {
@@ -140,7 +143,7 @@ export async function initTransactionsPage(_uid) {
     console.warn("[transactions] could not load account names", e);
   }
 
-  // ── Category map: { id -> { name, color } } ───────────────────────
+  // ── Category map ─────────────────────────────────────────────────
   let catMap = {};
   try {
     catMap = await getCategoriesMap(_uid);
@@ -148,7 +151,6 @@ export async function initTransactionsPage(_uid) {
     console.warn("[transactions] could not load categories", e);
   }
 
-  // Populate category filter from the live catMap
   if (catFilter) {
     catFilter.innerHTML =
       '<option value="">All Categories</option>' +
@@ -157,7 +159,7 @@ export async function initTransactionsPage(_uid) {
         .join("");
   }
 
-  // ── Load all transactions from global collection ───────────────
+  // ── Load all transactions ─────────────────────────────────────────
   let allTxns = [];
 
   async function loadTransactions() {
@@ -226,6 +228,12 @@ export async function initTransactionsPage(_uid) {
     });
   }
 
+  // ── Update clear button visibility ───────────────────────────────
+  function updateClearBtn() {
+    if (!clearBtn) return;
+    clearBtn.classList.toggle("hidden", !hasActiveFilters(acctFilter, catFilter, typeFilter, dateFrom, dateTo, searchInput));
+  }
+
   // ── Filter + render ───────────────────────────────────────────────
   function renderTable() {
     const acctVal   = acctFilter?.value ?? "";
@@ -251,16 +259,25 @@ export async function initTransactionsPage(_uid) {
       return true;
     });
 
-    // Summary
+    // ── Update summary cards ─────────────────────────────────────────
     let totalIncomeCents = 0, totalExpenseCents = 0;
     filtered.forEach(t => {
       const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
-      if (t.type === "income")  totalIncomeCents  += cents;
-      else                      totalExpenseCents += cents;
+      if (t.type === "income") totalIncomeCents  += cents;
+      else                     totalExpenseCents += cents;
     });
+    const netCents = totalIncomeCents - totalExpenseCents;
+    const fmt = cents => "$" + (Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     if (summaryCount)   summaryCount.textContent   = filtered.length.toLocaleString();
-    if (summaryIncome)  summaryIncome.textContent  = "$" + (totalIncomeCents  / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (summaryExpense) summaryExpense.textContent = "-$" + (totalExpenseCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (summaryIncome)  summaryIncome.textContent  = fmt(totalIncomeCents);
+    if (summaryExpense) summaryExpense.textContent = "-" + fmt(totalExpenseCents);
+    if (summaryNet) {
+      summaryNet.textContent = (netCents < 0 ? "-" : "") + fmt(netCents);
+      summaryNet.classList.toggle("negative", netCents < 0);
+    }
+
+    updateClearBtn();
 
     if (filtered.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7" class="txn-empty">No transactions match your filters.</td></tr>`;
