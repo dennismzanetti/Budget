@@ -8,21 +8,14 @@
  *  - Results card with stats and any parse/write errors
  *  - "Import another file" reset flow
  *
- * NOTE: All DOM queries and event bindings are deferred inside initImportPage()
- * because this module loads before partials.js has injected the #import HTML.
+ * NOTE: All DOM queries, auth references, and event bindings are deferred
+ * inside initImportPage() so that Firebase is guaranteed to be initialized
+ * (by app.js) before getAuth() is ever called.
  */
 
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { importBofAFile } from "./import.js";
 import { populateAccountSelect } from "./accounts.js";
-
-// ── State ──────────────────────────────────────────────────────────────
-let currentUid  = null;
-
-const auth = getAuth();
-onAuthStateChanged(auth, (user) => {
-  currentUid = user ? user.uid : null;
-});
 
 // ── File selection helpers ────────────────────────────────────────────────
 function formatBytes(bytes) {
@@ -67,9 +60,17 @@ export function initImportPage() {
   // Mark as initialized now that the DOM is confirmed present
   _importInited = true;
 
+  // ── Auth — lazy, safe to call now that app.js has run initializeApp() ──
+  const auth = getAuth();
+  let currentUid = null;
+  onAuthStateChanged(auth, (user) => {
+    currentUid = user ? user.uid : null;
+  });
+
   // Populate accounts dropdown — wait for a valid uid before querying Firestore
-  if (currentUid) {
-    populateAccountSelect(currentUid, accountSelect);
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    populateAccountSelect(currentUser.uid, accountSelect);
   } else {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -116,14 +117,14 @@ export function initImportPage() {
     errorBanner.textContent = "";
   }
 
-  // ── File input event ────────────────────────────────────────────────────
+  // ── File input events ────────────────────────────────────────────────────
   fileInput.addEventListener("change", () => {
     if (fileInput.files[0]) setFile(fileInput.files[0]);
   });
   fileClearBtn.addEventListener("click", () => clearFile());
   accountSelect.addEventListener("change", updateSubmitState);
 
-  // ── Progress helpers ────────────────────────────────────────────────
+  // ── Progress helpers ─────────────────────────────────────────────────────
   const STEPS = { read: 15, parse: 45, write: 85, done: 100 };
 
   function setProgress(step, message) {
@@ -133,7 +134,7 @@ export function initImportPage() {
     progressMsg.textContent = message;
   }
 
-  // ── Import flow ───────────────────────────────────────────────────────
+  // ── Import flow ──────────────────────────────────────────────────────────
   submitBtn.addEventListener("click", async () => {
     if (!selectedFile || !accountSelect.value || !currentUid) return;
     hideError();
@@ -166,14 +167,14 @@ export function initImportPage() {
       ? `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--success"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
       : `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--warn"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
     resultTitle.textContent = imported > 0
-      ? `${imported} transaction${imported !== 1 ? 's' : ''} imported`
+      ? `${imported} transaction${imported !== 1 ? "s" : ""} imported`
       : "No new transactions imported";
     resultSummary.textContent = duplicates > 0
-      ? `${duplicates} duplicate${duplicates !== 1 ? 's' : ''} skipped \u2014 already in your database.`
+      ? `${duplicates} duplicate${duplicates !== 1 ? "s" : ""} skipped \u2014 already in your database.`
       : "";
     const stats = [
-      { label: "Imported",     value: imported,        cls: "stat--green" },
-      { label: "Duplicates",   value: duplicates,      cls: "stat--muted" },
+      { label: "Imported",     value: imported,         cls: "stat--green" },
+      { label: "Duplicates",   value: duplicates,       cls: "stat--muted" },
       { label: "Skipped rows", value: skippedRows ?? 0, cls: "stat--muted" },
     ];
     resultStats.innerHTML = stats.map(s =>
@@ -190,7 +191,7 @@ export function initImportPage() {
     }
   }
 
-  // ── Reset / import again ────────────────────────────────────────────────
+  // ── Reset / import again ─────────────────────────────────────────────────
   importAgainBtn.addEventListener("click", () => {
     clearFile();
     hideError();
@@ -204,10 +205,3 @@ export function initImportPage() {
     resultStats.innerHTML = "";
   });
 }
-
-// ── Trigger init when #import is shown ───────────────────────────────────
-function maybeInitImport() {
-  if (window.location.hash === "#import") initImportPage();
-}
-window.addEventListener("hashchange", maybeInitImport);
-window.addEventListener("DOMContentLoaded", maybeInitImport);
