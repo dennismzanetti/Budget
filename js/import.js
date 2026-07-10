@@ -308,7 +308,7 @@ export async function importTransactions(uid, candidates, accountId = "", accoun
 
 // ── High-level helper ─────────────────────────────────────────────────────────
 
-export async function importBofAFile(uid, file, accountId, onProgress = (), accountName = "") {
+export async function importBofAFile(uid, file, accountId, onProgress = () => {}, accountName = "") {
   onProgress({ step: "read", message: "Reading file…" });
   const csvText = await file.text();
 
