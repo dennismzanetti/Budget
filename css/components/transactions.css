@@ -40,24 +40,39 @@
   background: var(--bg, #f5f7fb);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 12px);
-  border-left: 4px solid var(--border);
-  transition: box-shadow 150ms ease;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 6%, transparent);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+  position: relative;
+  overflow: hidden;
 }
+
+/* Top accent strip replaces the colored left border */
+.txn-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--border);
+  border-radius: var(--radius-sm, 12px) var(--radius-sm, 12px) 0 0;
+}
+
+.txn-stat-card--income::before  { background: var(--color-success, #437a22); }
+.txn-stat-card--expense::before { background: var(--color-notification, #a13544); }
+.txn-stat-card--net::before     { background: var(--primary); }
 
 .txn-stat-card:hover {
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 8%, transparent);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--text) 10%, transparent);
+  transform: translateY(-1px);
 }
-
-.txn-stat-card--income  { border-left-color: var(--color-success, #437a22); }
-.txn-stat-card--expense { border-left-color: var(--color-notification, #a13544); }
-.txn-stat-card--net     { border-left-color: var(--primary); }
 
 .txn-stat-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary);
@@ -74,7 +89,7 @@
 .txn-stat-body {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -350,8 +365,8 @@ html[data-theme="dark"] .txn-type-badge--expense { background: color-mix(in srgb
   }
 
   .txn-stat-icon {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     font-size: 0.85rem;
   }
 
