@@ -16,10 +16,9 @@
 
     <div class="import-field">
       <label class="import-label" for="importAccountSelect">Destination account</label>
-      <select id="importAccountSelect" class="import-select" aria-describedby="importAccountHint">
+      <select id="importAccountSelect" class="import-select" aria-label="Select destination account">
         <option value="">Loading accounts…</option>
       </select>
-      <p id="importAccountHint" class="import-hint">Transactions will be added to this account</p>
     </div>
 
     <div
@@ -33,8 +32,7 @@
       <div class="import-dropzone__icon" aria-hidden="true">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </div>
-      <p class="import-dropzone__primary">Drop your CSV file here</p>
-      <p class="import-dropzone__secondary" id="importDropHint">or <span class="import-dropzone__link">browse to upload</span> &mdash; .csv files only</p>
+      <p class="import-dropzone__primary" id="importDropHint">Drop a .csv file here, or <span class="import-dropzone__link">browse to upload</span></p>
       <input
         id="importFileInput"
         type="file"

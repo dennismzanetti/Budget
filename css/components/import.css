@@ -77,21 +77,39 @@
   color: var(--text, #18212b);
 }
 
+/* Styled account dropdown */
 .import-select {
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--border, #d9e2ec);
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0.6rem 2.5rem 0.6rem 0.85rem;
+  border: 1.5px solid var(--border, #d9e2ec);
   border-radius: var(--radius-sm, 12px);
-  background: var(--surface, #ffffff);
+  background-color: var(--surface, #ffffff);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235e6a77' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px;
   color: var(--text, #18212b);
   font-size: 0.9rem;
-  appearance: auto;
   cursor: pointer;
   transition: border-color 150ms ease, box-shadow 150ms ease;
+  width: 100%;
 }
 .import-select:focus {
   outline: none;
   border-color: var(--primary, #0f766e);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0f766e) 20%, transparent);
+}
+.import-select:hover {
+  border-color: color-mix(in srgb, var(--primary, #0f766e) 60%, var(--border, #d9e2ec));
+}
+
+/* Dark mode: swap chevron color to light gray */
+[data-theme="dark"] .import-select {
+  background-color: var(--surface, #1a232d);
+  border-color: var(--border, #304252);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a0adb8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  color: var(--text, #e2e8f0);
 }
 
 .import-hint {
@@ -100,8 +118,7 @@
 }
 
 /* Drop zone
-   Base border uses --border so it's always legible against the card surface in
-   both light (#d9e2ec on #fff) and dark (#304252 on #1a232d).
+   Base border uses a clearly visible dashed outline in both light and dark mode.
    Hover / drag-over / has-file states brighten to --primary for clear feedback. */
 .import-dropzone {
   position: relative;
@@ -114,7 +131,7 @@
   min-height: 160px;
   border: 2px dashed var(--border, #d9e2ec);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--primary, #0f766e) 8%, var(--surface, #ffffff));
+  background: color-mix(in srgb, var(--primary, #0f766e) 5%, var(--surface, #ffffff));
   text-align: center;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
@@ -122,7 +139,7 @@
 .import-dropzone:hover,
 .import-dropzone:focus-visible {
   border-color: var(--primary, #0f766e);
-  background: color-mix(in srgb, var(--primary, #0f766e) 13%, var(--surface, #ffffff));
+  background: color-mix(in srgb, var(--primary, #0f766e) 10%, var(--surface, #ffffff));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0f766e) 20%, transparent);
   outline: none;
 }
@@ -137,6 +154,17 @@
   background: color-mix(in srgb, var(--primary, #0f766e) 10%, var(--surface, #ffffff));
 }
 
+/* Dark mode: ensure dashed border is clearly visible on dark surfaces */
+[data-theme="dark"] .import-dropzone {
+  border-color: var(--border, #3d5166);
+  background: color-mix(in srgb, var(--primary, #4f98a3) 8%, var(--surface, #1a232d));
+}
+[data-theme="dark"] .import-dropzone:hover,
+[data-theme="dark"] .import-dropzone:focus-visible {
+  border-color: var(--primary, #4f98a3);
+  background: color-mix(in srgb, var(--primary, #4f98a3) 14%, var(--surface, #1a232d));
+}
+
 .import-dropzone__icon {
   color: var(--primary, #0f766e);
   margin-bottom: 4px;
@@ -146,12 +174,6 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text, #18212b);
-  max-width: unset;
-}
-
-.import-dropzone__secondary {
-  font-size: 0.82rem;
-  color: var(--muted, #5e6a77);
   max-width: unset;
 }
 
@@ -226,12 +248,13 @@
   line-height: 1.5;
 }
 
-/* Actions row */
+/* Actions row — extra top space to separate from the file picker */
 .import-actions {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+  margin-top: var(--space-4);
 }
 
 /* Progress card */
@@ -254,7 +277,7 @@
   border-radius: 9999px;
   background: var(--primary, #0f766e);
   width: 0%;
-  transition: width 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width 400ms ease;
 }
 
 .import-progress-msg {
@@ -267,95 +290,47 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  align-items: center;
+  text-align: center;
   margin-bottom: var(--space-4);
 }
 
 .import-result-icon {
-  width: 52px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.import-result-icon--success {
-  stroke: #437a22;
-}
-.import-result-icon--warn {
-  stroke: #964219;
+  font-size: 2.5rem;
+  line-height: 1;
 }
 
 .import-result-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  width: 100%;
+  max-width: 360px;
+  text-align: left;
 }
 
-.import-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px;
-  border-radius: var(--radius-sm, 12px);
-  background: var(--surface-2, #eef3f8);
-  border: 1px solid var(--border, #d9e2ec);
-}
-
-.import-stat dt {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.import-result-stats dt {
+  font-size: 0.78rem;
   color: var(--muted, #5e6a77);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.import-result-stats dd {
+  font-size: 1.1rem;
   font-weight: 600;
-}
-
-.import-stat dd {
-  font-size: 1.5rem;
-  font-weight: 700;
   color: var(--text, #18212b);
-  font-variant-numeric: tabular-nums;
 }
-
-.import-stat.stat--green dd { color: #437a22; }
-.import-stat.stat--muted dd { color: var(--muted, #5e6a77); }
 
 .import-result-errors {
-  padding: 12px 16px;
-  border-radius: var(--radius-sm, 12px);
-  background: color-mix(in srgb, #964219 6%, var(--surface, #ffffff));
-  border: 1px solid color-mix(in srgb, #964219 20%, transparent);
+  width: 100%;
+  text-align: left;
   font-size: 0.82rem;
-  color: var(--text, #18212b);
-}
-
-.import-error-heading {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #964219;
-  max-width: unset;
-}
-
-.import-result-errors ul {
-  padding-left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Mobile adjustments */
-@media (max-width: 600px) {
-  .import-result-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .import-dropzone {
-    padding: 32px 16px;
-  }
-  .import-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .import-actions .btn {
-    text-align: center;
-    justify-content: center;
-  }
+  color: var(--muted, #5e6a77);
+  background: var(--surface-2, #eef3f8);
+  border-radius: var(--radius-sm, 12px);
+  padding: 12px 16px;
+  max-height: 160px;
+  overflow-y: auto;
 }
