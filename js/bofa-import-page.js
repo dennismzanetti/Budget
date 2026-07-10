@@ -31,8 +31,13 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// ── Re-init guard — event listeners are bound only once ──────────────────
+let _importInited = false;
+
 // ── Page init — deferred until #import is active ─────────────────────────
 export function initImportPage() {
+  if (_importInited) return;
+
   const fileInput        = document.getElementById("importFileInput");
   const filePreview      = document.getElementById("importFilePreview");
   const fileNameEl       = document.getElementById("importFileName");
@@ -58,6 +63,9 @@ export function initImportPage() {
     console.warn("[import] #importFileInput not found — partial may not have loaded yet");
     return;
   }
+
+  // Mark as initialized now that the DOM is confirmed present
+  _importInited = true;
 
   // Populate accounts dropdown — wait for a valid uid before querying Firestore
   if (currentUid) {
@@ -132,7 +140,7 @@ export function initImportPage() {
     uploadCard.classList.add("hidden");
     progressCard.classList.remove("hidden");
     resultCard.classList.add("hidden");
-    setProgress("read", "Reading file…");
+    setProgress("read", "Reading file\u2026");
     try {
       const result = await importBofAFile(
         currentUid,
@@ -161,7 +169,7 @@ export function initImportPage() {
       ? `${imported} transaction${imported !== 1 ? 's' : ''} imported`
       : "No new transactions imported";
     resultSummary.textContent = duplicates > 0
-      ? `${duplicates} duplicate${duplicates !== 1 ? 's' : ''} skipped — already in your database.`
+      ? `${duplicates} duplicate${duplicates !== 1 ? 's' : ''} skipped \u2014 already in your database.`
       : "";
     const stats = [
       { label: "Imported",     value: imported,        cls: "stat--green" },
@@ -197,9 +205,9 @@ export function initImportPage() {
   });
 }
 
-// ── Trigger init on hashchange to #import ────────────────────────────────
-window.addEventListener("hashchange", () => {
-  if (window.location.hash === "#import") {
-    initImportPage();
-  }
-});
+// ── Trigger init when #import is shown ───────────────────────────────────
+function maybeInitImport() {
+  if (window.location.hash === "#import") initImportPage();
+}
+window.addEventListener("hashchange", maybeInitImport);
+window.addEventListener("DOMContentLoaded", maybeInitImport);
