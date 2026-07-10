@@ -206,7 +206,7 @@ html[data-theme="dark"] .cat-breakdown__row-amount--expense {
   color: #dd6974;
 }
 
-/* ── Chevron toggle ─────────────────────────────────────────────── */
+/* ── Chevron toggle (breakdown rows) ────────────────────────────── */
 .cat-breakdown__chevron {
   flex-shrink: 0;
   width: 16px;
@@ -306,7 +306,7 @@ html[data-theme="dark"] .cat-breakdown__tx-amount--expense {
 .account-card--expandable {
   cursor: pointer;
   user-select: none;
-  transition: background 0.12s;
+  transition: background 0.12s, box-shadow 0.12s;
 }
 
 .account-card--expandable:hover {
@@ -319,25 +319,28 @@ html[data-theme="dark"] .cat-breakdown__tx-amount--expense {
   border-bottom-right-radius: 0;
 }
 
-/* Chevron inside the card action area */
-.cat-breakdown__chevron-wrap {
-  display: inline-flex;
-  align-items: center;
-  pointer-events: none;
+/* Fix 3: Income/expense colors for card period total — strong, specific */
+.category-card__period-total--income {
+  color: #437a22 !important;
+}
+html[data-theme="dark"] .category-card__period-total--income {
+  color: #6daa45 !important;
 }
 
-.account-card--expandable .cat-breakdown__chevron {
-  transition: transform 0.2s ease;
+.category-card__period-total--expense {
+  color: #a13544 !important;
 }
-
-.account-card--expandable.is-expanded .cat-breakdown__chevron {
-  transform: rotate(180deg);
+html[data-theme="dark"] .category-card__period-total--expense {
+  color: #dd6974 !important;
 }
 
 /* ── Card transaction table (transactions-page style) ────────────── */
 
+.cat-breakdown__tx-list-row {
+  list-style: none;
+}
+
 .cat-card-tx__wrapper {
-  /* Override the ul-style from cat-breakdown__tx-list */
   list-style: none;
   margin: 0;
   padding: 0;

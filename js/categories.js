@@ -114,7 +114,7 @@ export async function populateCategorySelect(_uid, selectEl, opts = {}) {
 // ── SVG icons ─────────────────────────────────────────────────────────
 const ICON_EDIT   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
 const ICON_DELETE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>`;
-const ICON_CHEVRON = `<svg class="cat-breakdown__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+const ICON_CHEVRON = `<svg class="cat-breakdown__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 
 function escHtml(str) {
   return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -196,10 +196,9 @@ function buildDonut(canvasId, labels, data, colors) {
   return chart;
 }
 
-// ── Build expanded transactions sub-list for a category ───────────────
-// Builds a combined income+expense list for the category card expand feature.
-// Returns a <li class="cat-breakdown__tx-list-row"> wrapping the table,
-// so it is a valid child of the parent <ul>.
+// ── Build expanded transactions table for a category card ─────────────
+// Returns a <li class="cat-breakdown__tx-list-row"> with a transactions
+// table matching the transactions page style. Valid child of parent <ul>.
 function buildCardTxList(catId, txns, catsMap) {
   const matching = txns.filter(tx => {
     const txCatId = tx.categoryId || "__none__";
@@ -218,7 +217,7 @@ function buildCardTxList(catId, txns, catsMap) {
   liWrap.dataset.txListFor = catId;
 
   if (matching.length === 0) {
-    liWrap.innerHTML = `<div class="cat-breakdown__tx-list"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
+    liWrap.innerHTML = `<div class="cat-breakdown__tx-list cat-card-tx__wrapper"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
     return liWrap;
   }
 
@@ -483,7 +482,9 @@ async function renderBreakdown(uid, year, month, catsMap) {
   return { incomeTotals, expenseTotals, txns };
 }
 
-// ── Render a single category card (with optional period total) ────────
+// ── Render a single category card ─────────────────────────────────────
+// Fix 1: chevron moved into account-card__info row (flex row with name),
+// given explicit width/height, and removed from actions area.
 function renderCard(c, periodTotal, type) {
   const color = c.color || "#888888";
   const hasPeriodTotal = periodTotal !== undefined && periodTotal > 0;
@@ -494,9 +495,10 @@ function renderCard(c, periodTotal, type) {
       : "";
   return `
     <li class="account-card account-card--expandable" data-id="${c.id}" role="button" tabindex="0" aria-expanded="false">
-      <div class="account-card__info">
+      <div class="account-card__info category-card__info-row">
         <span class="category-swatch" style="background:${escHtml(color)}" aria-hidden="true"></span>
         <span class="account-card__name">${escHtml(c.name)}</span>
+        <svg class="cat-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="account-card__meta category-card__meta">
         ${hasPeriodTotal ? `<span class="category-card__period-total ${amtClass}">${fmtCurrency(periodTotal)}</span>` : ""}
@@ -504,7 +506,6 @@ function renderCard(c, periodTotal, type) {
       <div class="account-card__actions">
         <button class="btn btn-ghost btn-sm js-edit-category" data-id="${c.id}" title="Edit category" aria-label="Edit category">${ICON_EDIT}</button>
         <button class="btn btn-ghost btn-sm js-delete-category" data-id="${c.id}" title="Delete category" aria-label="Delete category">${ICON_DELETE}</button>
-        <span class="cat-breakdown__chevron-wrap" aria-hidden="true">${ICON_CHEVRON}</span>
       </div>
     </li>
     <li class="account-edit-row js-cat-edit-row hidden" data-id="${c.id}">
@@ -621,35 +622,46 @@ export async function initCategoriesPage(_uid) {
       }).join("");
 
       // ── Card expand: click to show transactions ──────────────────
+      // Fix 4: find the edit-row sibling by query (not nextElementSibling)
+      // and insert the tx list AFTER the edit row so it doesn't corrupt
+      // the card + edit-row pair. Collapse uses data-tx-list-for query.
       listEl.querySelectorAll(".account-card--expandable").forEach(card => {
+
+        function getEditRow() {
+          return listEl.querySelector(`.js-cat-edit-row[data-id="${card.dataset.id}"]`);
+        }
+        function getOpenTxList() {
+          return listEl.querySelector(`.cat-breakdown__tx-list-row[data-tx-list-for="${card.dataset.id}"]`);
+        }
+        function collapseCard(c) {
+          c.classList.remove("is-expanded");
+          c.setAttribute("aria-expanded", "false");
+          const existing = listEl.querySelector(`.cat-breakdown__tx-list-row[data-tx-list-for="${c.dataset.id}"]`);
+          if (existing) existing.remove();
+        }
+
         card.addEventListener("click", e => {
           // Don't expand if clicking edit/delete buttons
           if (e.target.closest(".js-edit-category, .js-delete-category")) return;
 
-          const id = card.dataset.id;
           const isExpanded = card.classList.contains("is-expanded");
 
-          // Collapse any other open card
+          // Collapse any other open card first
           listEl.querySelectorAll(".account-card--expandable.is-expanded").forEach(open => {
-            if (open !== card) {
-              open.classList.remove("is-expanded");
-              open.setAttribute("aria-expanded", "false");
-              const next = open.nextElementSibling;
-              if (next?.dataset.txListFor) next.remove();
-            }
+            if (open !== card) collapseCard(open);
           });
 
           if (isExpanded) {
-            card.classList.remove("is-expanded");
-            card.setAttribute("aria-expanded", "false");
-            const next = card.nextElementSibling;
-            if (next?.dataset.txListFor) next.remove();
+            collapseCard(card);
           } else {
             card.classList.add("is-expanded");
             card.setAttribute("aria-expanded", "true");
-            // Insert after this card but before the edit row
-            const txListItem = buildCardTxList(id, _lastTxns, _lastCatsMap);
-            card.insertAdjacentElement("afterend", txListItem);
+            // Insert AFTER the edit row (not after the card) so the
+            // edit-row stays connected to its card.
+            const editRow = getEditRow();
+            const anchor = editRow || card;
+            const txListItem = buildCardTxList(card.dataset.id, _lastTxns, _lastCatsMap);
+            anchor.insertAdjacentElement("afterend", txListItem);
           }
         });
 

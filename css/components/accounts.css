@@ -362,15 +362,36 @@ html[data-theme="dark"] .account-delete-confirm-btn:hover {
   line-height: 1.5;
 }
 
+/* ── Category card info row: name + chevron side by side ─────────────── */
+.category-card__info-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Category card chevron ───────────────────────────────────────────── */
+.cat-card__chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+  display: block;
+}
+
+.account-card--expandable.is-expanded .cat-card__chevron {
+  transform: rotate(180deg);
+}
+
 /* ── Category card meta (period total) ───────────────────────────────── */
 .category-card__meta {
   flex: 1;
   justify-content: flex-start;
 }
 
+/* Fix 2: bold, readable period total */
 .category-card__period-total {
-  font-size: 0.82rem;
-  font-weight: 500;
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
