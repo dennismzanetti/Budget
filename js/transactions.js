@@ -5,7 +5,7 @@
  *   initTransactionsPage(uid) — wires up the #transactions page UI
  *
  * Schema (written by import.js):
- *   Collection : transactions (global collection)
+ *   Collection : users/{uid}/transactions (per-user subcollection)
  *   Fields     : date (Timestamp), payee (string), amountCents (int),
  *                type ("expense"|"income"), accountId, categoryId,
  *                notes, sourceId, isActive, isCleared, source
@@ -146,6 +146,7 @@ export async function initTransactionsPage(_uid) {
   // ── Category map ─────────────────────────────────────────────────
   let catMap = {};
   try {
+    // FIX 4: use getCategoriesMap with uid to resolve categoryId → name
     catMap = await getCategoriesMap(_uid);
   } catch (e) {
     console.warn("[transactions] could not load categories", e);
@@ -171,7 +172,8 @@ export async function initTransactionsPage(_uid) {
     }
 
     try {
-      const txnCol = collection(getDb(), "transactions");
+      // FIX 1: use per-user subcollection users/{uid}/transactions
+      const txnCol = collection(getDb(), "users", _uid, "transactions");
       const IN_LIMIT = 30;
       const allDocs = [];
 
@@ -200,6 +202,7 @@ export async function initTransactionsPage(_uid) {
           bv = getDateValue(b.date)?.getTime() ?? 0;
           break;
         case "payee":
+          // FIX 2: sort on t.payee (not t.description)
           av = (a.payee ?? "").toLowerCase();
           bv = (b.payee ?? "").toLowerCase();
           break;
@@ -208,6 +211,7 @@ export async function initTransactionsPage(_uid) {
           bv = (accountMap[b.accountId] ?? "").toLowerCase();
           break;
         case "category":
+          // FIX 4: resolve categoryId via catMap
           av = (catMap[a.categoryId]?.name ?? "").toLowerCase();
           bv = (catMap[b.categoryId]?.name ?? "").toLowerCase();
           break;
@@ -216,6 +220,7 @@ export async function initTransactionsPage(_uid) {
           bv = b.type ?? "";
           break;
         case "amount":
+          // FIX 3: use amountCents directly
           av = typeof a.amountCents === "number" ? a.amountCents : 0;
           bv = typeof b.amountCents === "number" ? b.amountCents : 0;
           break;
@@ -246,11 +251,13 @@ export async function initTransactionsPage(_uid) {
     const filtered = allTxns.filter(t => {
       if (acctVal && t.accountId !== acctVal) return false;
       if (catVal  && t.categoryId !== catVal) return false;
+      // FIX 5: filter by t.type string, not by sign of amount
       if (typeVal && t.type !== typeVal) return false;
       const d = getDateValue(t.date);
       if (fromVal && d && d < fromVal) return false;
       if (toVal   && d && d > toVal)   return false;
       if (searchVal) {
+        // FIX 2: search on t.payee (not t.description)
         const payee   = (t.payee ?? "").toLowerCase();
         const catName = (catMap[t.categoryId]?.name ?? "").toLowerCase();
         const notes   = (t.notes ?? "").toLowerCase();
@@ -262,6 +269,7 @@ export async function initTransactionsPage(_uid) {
     // ── Update summary cards ─────────────────────────────────────────
     let totalIncomeCents = 0, totalExpenseCents = 0;
     filtered.forEach(t => {
+      // FIX 3 & 5: use amountCents and t.type
       const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
       if (t.type === "income") totalIncomeCents  += cents;
       else                     totalExpenseCents += cents;
@@ -287,6 +295,7 @@ export async function initTransactionsPage(_uid) {
     const sorted = sortRows(filtered);
 
     tbody.innerHTML = sorted.map(t => {
+      // FIX 5: use t.type for income/expense classification
       const isIncome = t.type === "income";
       const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "\u2014");
       return `
@@ -317,7 +326,8 @@ export async function initTransactionsPage(_uid) {
         const id    = sel.dataset.id;
         const catId = sel.value;
         try {
-          await updateDoc(doc(getDb(), "transactions", id), { categoryId: catId, updatedAt: new Date() });
+          // FIX 1: write to the correct subcollection path
+          await updateDoc(doc(getDb(), "users", _uid, "transactions", id), { categoryId: catId, updatedAt: new Date() });
           const txn = allTxns.find(t => t.id === id);
           if (txn) txn.categoryId = catId;
           sel.classList.add("txn-category-saved");
@@ -337,7 +347,8 @@ export async function initTransactionsPage(_uid) {
         const row = tbody.querySelector(`tr[data-id="${id}"]`);
         if (!confirm("Delete this transaction? This cannot be undone.")) return;
         try {
-          await deleteDoc(doc(getDb(), "transactions", id));
+          // FIX 1: delete from correct subcollection path
+          await deleteDoc(doc(getDb(), "users", _uid, "transactions", id));
           allTxns = allTxns.filter(t => t.id !== id);
           row?.remove();
           renderTable();
