@@ -2,7 +2,7 @@
  * bofa-import-page.js — UI controller for the Bank of America import page (#import)
  *
  * Wires up:
- *  - Drag-and-drop + click-to-browse file selection
+ *  - File input for CSV selection
  *  - Account dropdown populated from Firestore via accounts.js
  *  - Import button → calls importBofAFile() with progress feedback
  *  - Results card with stats and any parse/write errors
@@ -17,10 +17,8 @@ import { importBofAFile } from "./import.js";
 import { populateAccountSelect } from "./accounts.js";
 
 // ── State ──────────────────────────────────────────────────────────────
-let currentUid   = null;
-let initialized  = false;
+let currentUid  = null;
 
-// Track auth independently of page init
 const auth = getAuth();
 onAuthStateChanged(auth, (user) => {
   currentUid = user ? user.uid : null;
@@ -35,8 +33,6 @@ function formatBytes(bytes) {
 
 // ── Page init — deferred until #import is active ─────────────────────────
 export function initImportPage() {
-  // Re-query DOM every time the page is shown (outerHTML swap means old refs are stale)
-  const dropZone         = document.getElementById("importDropZone");
   const fileInput        = document.getElementById("importFileInput");
   const filePreview      = document.getElementById("importFilePreview");
   const fileNameEl       = document.getElementById("importFileName");
@@ -58,8 +54,8 @@ export function initImportPage() {
   const importAgainBtn   = document.getElementById("importAgainBtn");
   const uploadCard       = document.querySelector(".import-upload-card");
 
-  if (!dropZone) {
-    console.warn("[import] #importDropZone not found — partial may not have loaded yet");
+  if (!fileInput) {
+    console.warn("[import] #importFileInput not found — partial may not have loaded yet");
     return;
   }
 
@@ -78,7 +74,6 @@ export function initImportPage() {
     fileNameEl.textContent = file.name;
     fileSizeEl.textContent = formatBytes(file.size);
     filePreview.classList.remove("hidden");
-    dropZone.classList.add("import-dropzone--has-file");
     hideError();
     updateSubmitState();
   }
@@ -87,7 +82,6 @@ export function initImportPage() {
     selectedFile = null;
     fileInput.value = "";
     filePreview.classList.add("hidden");
-    dropZone.classList.remove("import-dropzone--has-file");
     updateSubmitState();
   }
 
@@ -106,31 +100,11 @@ export function initImportPage() {
     errorBanner.textContent = "";
   }
 
-  // ── Drop zone events ────────────────────────────────────────────────
-  dropZone.addEventListener("click", () => fileInput.click());
-  dropZone.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
-  });
-  dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropZone.classList.add("import-dropzone--drag");
-  });
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("import-dropzone--drag");
-  });
-  dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    dropZone.classList.remove("import-dropzone--drag");
-    const file = e.dataTransfer?.files?.[0];
-    if (file) setFile(file);
-  });
+  // ── File input event ────────────────────────────────────────────────────
   fileInput.addEventListener("change", () => {
     if (fileInput.files[0]) setFile(fileInput.files[0]);
   });
-  fileClearBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    clearFile();
-  });
+  fileClearBtn.addEventListener("click", () => clearFile());
   accountSelect.addEventListener("change", updateSubmitState);
 
   // ── Progress helpers ────────────────────────────────────────────────
