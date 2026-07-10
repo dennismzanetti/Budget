@@ -29,7 +29,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ── Theme ─────────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────────────────
 function setTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
 }
@@ -48,7 +48,7 @@ function bindThemeToggles() {
   });
 }
 
-// ── Auth ───────────────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────────────────────
 async function login() {
   const useRedirect = window.innerWidth < 768;
   if (useRedirect) {
@@ -84,14 +84,14 @@ function updateUI(user) {
   if (userNameEl) userNameEl.textContent = user.displayName || "User";
   if (userEmailEl) userEmailEl.textContent = user.email || "";
 
+  // initNav() is called once after loadPartials() in the IIFE below.
+  // Call it again here so active-page highlighting re-runs after login/logout.
   initNav();
 
   seedAccountsIfEmpty(user.uid)
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  // Note: initTransactionsPage is NOT called here — partials may not have
-  // injected #transactions yet. The hashchange listener handles on-demand init.
   if (getPage() === 'settings')     loadCommits();
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
@@ -112,15 +112,15 @@ window.addEventListener('hashchange', () => {
   if (getPage() === 'transactions') initTransactionsPage(auth.currentUser?.uid);
 });
 
-// ── Init ───────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
 export { db };
 
 (async () => {
   initTheme();
-  await loadPartials();
+  await loadPartials();   // inject all html/ partials into the DOM
+  initNav();              // wire router NOW — all <section> targets exist
   bindThemeToggles();
 
-  // Wire login/logout buttons (now present after partials load)
   const heroLoginBtn = document.getElementById("heroLoginBtn");
   const logoutBtn    = document.getElementById("logoutBtn");
 
