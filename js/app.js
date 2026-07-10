@@ -92,7 +92,10 @@ function updateUI(user) {
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  if (getPage() === 'settings')     loadCommits();
+  // Preload commits on every login so the settings page is ready immediately,
+  // regardless of which page the user lands on.
+  loadCommits();
+
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
 }
