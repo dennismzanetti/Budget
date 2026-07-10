@@ -120,12 +120,13 @@ function fmtCurrency(n) {
   return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ── Breakdown: fetch transactions for a given month ───────────────────
-async function fetchTransactionsForMonth(year, month) {
+// ── Breakdown: fetch transactions for a given month (user-scoped) ──────
+async function fetchTransactionsForMonth(uid, year, month) {
   // month is 0-based (JS Date)
   const start = new Date(year, month, 1);
   const end   = new Date(year, month + 1, 1);
-  const txRef = collection(getDb(), "transactions");
+  // FIX: use user-scoped subcollection instead of root "transactions"
+  const txRef = collection(getDb(), "users", uid, "transactions");
   const q = query(
     txRef,
     where("date", ">=", Timestamp.fromDate(start)),
@@ -231,8 +232,8 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart) {
   });
 }
 
-// ── Main breakdown renderer ────────────────────────────────────────────
-async function renderBreakdown(year, month, catsMap) {
+// ── Main breakdown renderer (uid now threaded through) ─────────────────
+async function renderBreakdown(uid, year, month, catsMap) {
   const periodEl      = document.getElementById("catBreakdownPeriod");
   const incomeTotalEl = document.getElementById("catIncomeTotalLabel");
   const expTotalEl    = document.getElementById("catExpenseTotalLabel");
@@ -244,10 +245,10 @@ async function renderBreakdown(year, month, catsMap) {
   const monthName = new Date(year, month, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
   periodEl.textContent = monthName;
 
-  // Fetch transactions
+  // Fetch transactions from user-scoped subcollection
   let txns;
   try {
-    txns = await fetchTransactionsForMonth(year, month);
+    txns = await fetchTransactionsForMonth(uid, year, month);
   } catch (err) {
     console.error("[categories] breakdown fetch error:", err);
     txns = [];
@@ -373,9 +374,10 @@ export async function initCategoriesPage(_uid) {
   let breakdownYear  = now.getFullYear();
   let breakdownMonth = now.getMonth(); // 0-based
 
+  // FIX: pass _uid into renderBreakdown so it queries the right subcollection
   async function refreshBreakdown() {
-    const catsMap = await getCategoriesMap(null);
-    await renderBreakdown(breakdownYear, breakdownMonth, catsMap);
+    const catsMap = await getCategoriesMap(_uid);
+    await renderBreakdown(_uid, breakdownYear, breakdownMonth, catsMap);
   }
 
   prevBtn?.addEventListener("click", () => {
