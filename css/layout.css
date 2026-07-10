@@ -1,20 +1,21 @@
 /* ── App layout ── */
 .app-layout {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--topbar-height) 1fr;
   height: 100vh;
   overflow: hidden;
 }
 
 .app-topbar {
-  height: var(--topbar-height);
+  grid-column: 1 / -1;
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 1.25rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
   z-index: 10;
 }
 
@@ -52,14 +53,15 @@
   align-items: center;
 }
 
+/* ── App body (passthrough) ── */
 .app-body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
+  display: contents;
 }
 
 /* ── Sidebar ── */
 .sidebar {
+  grid-column: 1;
+  grid-row: 2;
   width: var(--sidebar-width);
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -70,7 +72,8 @@
 
 /* ── Main content ── */
 .app-content {
-  flex: 1;
+  grid-column: 2;
+  grid-row: 2;
   overflow-y: auto;
   padding: 1.5rem;
 }
