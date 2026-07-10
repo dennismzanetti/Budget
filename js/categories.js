@@ -4,6 +4,9 @@
  * Categories are stored in the global top-level "categories" collection and
  * shared across all users (uid params are accepted for API compatibility but ignored).
  *
+ * Transactions are stored in the global top-level "transactions" collection and
+ * shared across all users.
+ *
  * Exports:
  *   initCategoriesPage(uid)                        — wires up the #categories page UI
  *   populateCategorySelect(uid, selectEl, opts)     — fills a <select> with category options
@@ -127,12 +130,13 @@ function fmtDate(ts) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ── Fetch transactions for a given period from user's subcollection ────
+// ── Fetch transactions for a given period from root-level collection ───
 async function fetchTransactionsForPeriod(uid, year, month) {
   // month is 0-based (JS Date)
   const start = new Date(year, month, 1);
   const end   = new Date(year, month + 1, 1);
-  const txRef = collection(getDb(), "users", uid, "transactions");
+  // Root-level transactions collection shared across all users
+  const txRef = collection(getDb(), "transactions");
   const q = query(
     txRef,
     where("date", ">=", Timestamp.fromDate(start)),
