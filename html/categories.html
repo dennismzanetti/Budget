@@ -7,6 +7,46 @@
     </button>
   </div>
 
+  <!-- ── Breakdown section ───────────────────────────────────────── -->
+  <div class="cat-breakdown" id="catBreakdown">
+    <div class="cat-breakdown__controls">
+      <button class="cat-breakdown__nav" id="catBreakdownPrev" aria-label="Previous month">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="cat-breakdown__period" id="catBreakdownPeriod">Loading…</span>
+      <button class="cat-breakdown__nav" id="catBreakdownNext" aria-label="Next month">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="cat-breakdown__charts">
+      <!-- Income card -->
+      <div class="cat-breakdown__card cat-breakdown__card--income">
+        <div class="cat-breakdown__card-title">Income</div>
+        <div class="cat-breakdown__donut-wrap">
+          <canvas id="catIncomeChart" aria-label="Income by category donut chart"></canvas>
+          <div class="cat-breakdown__donut-center">
+            <span class="cat-breakdown__donut-total" id="catIncomeTotalLabel">$0</span>
+            <span class="cat-breakdown__donut-label">total</span>
+          </div>
+        </div>
+        <ul class="cat-breakdown__rows" id="catIncomeRows"></ul>
+      </div>
+      <!-- Expense card -->
+      <div class="cat-breakdown__card cat-breakdown__card--expense">
+        <div class="cat-breakdown__card-title">Expenses</div>
+        <div class="cat-breakdown__donut-wrap">
+          <canvas id="catExpenseChart" aria-label="Expenses by category donut chart"></canvas>
+          <div class="cat-breakdown__donut-center">
+            <span class="cat-breakdown__donut-total" id="catExpenseTotalLabel">$0</span>
+            <span class="cat-breakdown__donut-label">total</span>
+          </div>
+        </div>
+        <ul class="cat-breakdown__rows" id="catExpenseRows"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Add category form ─────────────────────────────────────── -->
   <div id="addCategoryForm" class="card hidden" aria-label="Add new category">
     <h3 class="card-title">New Category</h3>
     <div class="form-grid">

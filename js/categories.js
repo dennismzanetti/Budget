@@ -14,7 +14,8 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, addDoc, updateDoc,
-  deleteDoc, doc, serverTimestamp, query, orderBy
+  deleteDoc, doc, serverTimestamp, query, orderBy,
+  where, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let _db = null;
@@ -59,7 +60,6 @@ async function fetchCategories() {
 
 /**
  * Returns a map of { categoryId -> { name, color } }.
- * uid param retained for API compatibility but is not used.
  */
 export async function getCategoriesMap(_uid) {
   const cats = await fetchCategories();
@@ -70,8 +70,6 @@ export async function getCategoriesMap(_uid) {
 
 /**
  * Finds an existing active category by name (case-insensitive) or creates a new one.
- * Returns the category ID.
- * uid param retained for API compatibility but is not used.
  */
 export async function ensureCategoryExists(_uid, name) {
   const trimmed = name.trim();
@@ -79,7 +77,6 @@ export async function ensureCategoryExists(_uid, name) {
   const cats = await fetchCategories();
   const existing = cats.find(c => c.name.trim().toLowerCase() === trimmed.toLowerCase());
   if (existing) return existing.id;
-  // Auto-create
   const ref = await addDoc(categoriesRef(), {
     name: trimmed,
     color: nextAutoColor(),
@@ -92,9 +89,6 @@ export async function ensureCategoryExists(_uid, name) {
 
 /**
  * Populates a <select> element with categories.
- * opts.includeBlank (default true) — prepend a blank "Select category…" option
- * opts.currentId — pre-select this category ID
- * uid param retained for API compatibility but is not used.
  */
 export async function populateCategorySelect(_uid, selectEl, opts = {}) {
   if (!selectEl) return;
@@ -120,6 +114,187 @@ const ICON_DELETE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"
 
 function escHtml(str) {
   return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function fmtCurrency(n) {
+  return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ── Breakdown: fetch transactions for a given month ───────────────────
+async function fetchTransactionsForMonth(year, month) {
+  // month is 0-based (JS Date)
+  const start = new Date(year, month, 1);
+  const end   = new Date(year, month + 1, 1);
+  const txRef = collection(getDb(), "transactions");
+  const q = query(
+    txRef,
+    where("date", ">=", Timestamp.fromDate(start)),
+    where("date", "<",  Timestamp.fromDate(end))
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// ── Donut chart instances (kept so we can destroy/recreate) ────────────
+let _incomeChart   = null;
+let _expenseChart  = null;
+
+function buildDonut(canvasId, labels, data, colors) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return null;
+  // Destroy previous instance if any
+  if (canvasId === "catIncomeChart"  && _incomeChart)  { _incomeChart.destroy();  _incomeChart  = null; }
+  if (canvasId === "catExpenseChart" && _expenseChart) { _expenseChart.destroy(); _expenseChart = null; }
+
+  const isEmpty = data.length === 0 || data.every(v => v === 0);
+  const chartData = isEmpty ? [1] : data;
+  const chartColors = isEmpty
+    ? [getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#d9e2ec"]
+    : colors;
+
+  const chart = new Chart(canvas, {
+    type: "doughnut",
+    data: {
+      labels: isEmpty ? ["No data"] : labels,
+      datasets: [{
+        data: chartData,
+        backgroundColor: chartColors,
+        borderWidth: 2,
+        borderColor: getComputedStyle(document.documentElement).getPropertyValue("--surface").trim() || "#fff",
+        hoverOffset: isEmpty ? 0 : 6,
+      }]
+    },
+    options: {
+      cutout: "68%",
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: !isEmpty,
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${fmtCurrency(ctx.parsed)}`
+          }
+        }
+      },
+      animation: { animateRotate: true, duration: 500 }
+    }
+  });
+
+  if (canvasId === "catIncomeChart")  _incomeChart  = chart;
+  if (canvasId === "catExpenseChart") _expenseChart = chart;
+  return chart;
+}
+
+// ── Render rows for one panel (income or expense) ─────────────────────
+function renderBreakdownRows(rowsEl, totalsMap, total, chart) {
+  rowsEl.innerHTML = "";
+  if (!totalsMap || Object.keys(totalsMap).length === 0) {
+    rowsEl.innerHTML = `<li class="cat-breakdown__empty">No transactions this period.</li>`;
+    return;
+  }
+
+  // Sort by amount descending
+  const sorted = Object.entries(totalsMap).sort((a, b) => b[1].amount - a[1].amount);
+
+  sorted.forEach(([, entry], idx) => {
+    const pct = total > 0 ? (entry.amount / total) * 100 : 0;
+    const li = document.createElement("li");
+    li.className = "cat-breakdown__row";
+    li.dataset.index = idx;
+    li.innerHTML = `
+      <span class="cat-breakdown__swatch" style="background:${escHtml(entry.color)}"></span>
+      <span class="cat-breakdown__row-name" title="${escHtml(entry.name)}">${escHtml(entry.name)}</span>
+      <span class="cat-breakdown__bar-wrap">
+        <span class="cat-breakdown__bar" style="width:${pct.toFixed(1)}%;background:${escHtml(entry.color)}"></span>
+      </span>
+      <span class="cat-breakdown__row-amount">${fmtCurrency(entry.amount)}</span>`;
+
+    // Hover: highlight slice in donut
+    li.addEventListener("mouseenter", () => {
+      li.classList.add("is-highlighted");
+      if (chart) {
+        chart.setDatasetVisibility(0, true);
+        chart.tooltip.setActiveElements([{ datasetIndex: 0, index: idx }], { x: 0, y: 0 });
+        chart.update();
+      }
+    });
+    li.addEventListener("mouseleave", () => {
+      li.classList.remove("is-highlighted");
+      if (chart) {
+        chart.tooltip.setActiveElements([], {});
+        chart.update();
+      }
+    });
+
+    rowsEl.appendChild(li);
+  });
+}
+
+// ── Main breakdown renderer ────────────────────────────────────────────
+async function renderBreakdown(year, month, catsMap) {
+  const periodEl      = document.getElementById("catBreakdownPeriod");
+  const incomeTotalEl = document.getElementById("catIncomeTotalLabel");
+  const expTotalEl    = document.getElementById("catExpenseTotalLabel");
+  const incomeRowsEl  = document.getElementById("catIncomeRows");
+  const expRowsEl     = document.getElementById("catExpenseRows");
+
+  if (!periodEl) return;
+
+  const monthName = new Date(year, month, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
+  periodEl.textContent = monthName;
+
+  // Fetch transactions
+  let txns;
+  try {
+    txns = await fetchTransactionsForMonth(year, month);
+  } catch (err) {
+    console.error("[categories] breakdown fetch error:", err);
+    txns = [];
+  }
+
+  // Aggregate by category
+  const incomeTotals  = {}; // catId -> { name, color, amount }
+  const expenseTotals = {};
+
+  txns.forEach(tx => {
+    const amount = parseFloat(tx.amount) || 0;
+    if (amount === 0) return;
+    const catId   = tx.categoryId || "__none__";
+    const catInfo = catsMap[catId] || { name: catId === "__none__" ? "Uncategorized" : catId, color: "#888888" };
+    const bucket  = amount > 0 ? incomeTotals : expenseTotals;
+    if (!bucket[catId]) bucket[catId] = { name: catInfo.name, color: catInfo.color, amount: 0 };
+    bucket[catId].amount += Math.abs(amount);
+  });
+
+  const incomeTotal  = Object.values(incomeTotals).reduce((s, v) => s + v.amount, 0);
+  const expenseTotal = Object.values(expenseTotals).reduce((s, v) => s + v.amount, 0);
+
+  // Update totals
+  if (incomeTotalEl)  incomeTotalEl.textContent  = fmtCurrency(incomeTotal);
+  if (expTotalEl)     expTotalEl.textContent      = fmtCurrency(expenseTotal);
+
+  // Build sorted arrays for charts
+  const incomeSorted  = Object.entries(incomeTotals).sort((a, b) => b[1].amount - a[1].amount);
+  const expenseSorted = Object.entries(expenseTotals).sort((a, b) => b[1].amount - a[1].amount);
+
+  // Draw donuts
+  const incomeChart  = buildDonut(
+    "catIncomeChart",
+    incomeSorted.map(([, v]) => v.name),
+    incomeSorted.map(([, v]) => v.amount),
+    incomeSorted.map(([, v]) => v.color)
+  );
+  const expenseChart = buildDonut(
+    "catExpenseChart",
+    expenseSorted.map(([, v]) => v.name),
+    expenseSorted.map(([, v]) => v.amount),
+    expenseSorted.map(([, v]) => v.color)
+  );
+
+  // Render row lists
+  if (incomeRowsEl)  renderBreakdownRows(incomeRowsEl,  incomeTotals,  incomeTotal,  incomeChart);
+  if (expRowsEl)     renderBreakdownRows(expRowsEl,     expenseTotals, expenseTotal, expenseChart);
 }
 
 // ── Render a single category card ────────────────────────────────────
@@ -176,8 +351,35 @@ export async function initCategoriesPage(_uid) {
   const nameInput = document.getElementById("newCategoryName");
   const colorInput= document.getElementById("newCategoryColor");
   const addErrEl  = document.getElementById("addCategoryError");
+  const prevBtn   = document.getElementById("catBreakdownPrev");
+  const nextBtn   = document.getElementById("catBreakdownNext");
 
   if (!listEl) return;
+
+  // ── Breakdown period state ────────────────────────────────────────
+  const now = new Date();
+  let breakdownYear  = now.getFullYear();
+  let breakdownMonth = now.getMonth(); // 0-based
+
+  async function refreshBreakdown() {
+    const catsMap = await getCategoriesMap(null);
+    await renderBreakdown(breakdownYear, breakdownMonth, catsMap);
+  }
+
+  prevBtn?.addEventListener("click", () => {
+    breakdownMonth--;
+    if (breakdownMonth < 0) { breakdownMonth = 11; breakdownYear--; }
+    refreshBreakdown();
+  });
+
+  nextBtn?.addEventListener("click", () => {
+    breakdownMonth++;
+    if (breakdownMonth > 11) { breakdownMonth = 0; breakdownYear++; }
+    refreshBreakdown();
+  });
+
+  // Initial breakdown load
+  refreshBreakdown();
 
   function showAddError(msg) {
     if (!addErrEl) return;
@@ -205,7 +407,6 @@ export async function initCategoriesPage(_uid) {
 
       listEl.innerHTML = cats.map(renderCard).join("");
 
-      // ── Edit ──────────────────────────────────────────────────────
       listEl.querySelectorAll(".js-edit-category").forEach(btn => {
         btn.addEventListener("click", () => {
           const id = btn.dataset.id;
@@ -243,6 +444,7 @@ export async function initCategoriesPage(_uid) {
               updatedAt: serverTimestamp(),
             });
             renderList();
+            refreshBreakdown();
           } catch (err) {
             console.error("[categories] updateDoc error:", err);
             if (errEl) { errEl.textContent = "Save failed. Try again."; errEl.classList.remove("hidden"); }
@@ -251,7 +453,6 @@ export async function initCategoriesPage(_uid) {
         });
       });
 
-      // ── Delete (inline confirm) ───────────────────────────────────
       listEl.querySelectorAll(".js-delete-category").forEach(btn => {
         btn.addEventListener("click", () => {
           const id = btn.dataset.id;
@@ -265,6 +466,7 @@ export async function initCategoriesPage(_uid) {
           listEl.querySelector(`.js-confirm-cat-delete[data-id="${id}"]`)?.addEventListener("click", async () => {
             await deleteDoc(doc(getDb(), "categories", id));
             renderList();
+            refreshBreakdown();
           });
         });
       });
@@ -275,7 +477,6 @@ export async function initCategoriesPage(_uid) {
     }
   }
 
-  // ── Add category form ─────────────────────────────────────────────
   addBtn?.addEventListener("click", () => {
     addForm?.classList.remove("hidden");
     addBtn.classList.add("hidden");
@@ -311,6 +512,7 @@ export async function initCategoriesPage(_uid) {
       addBtn?.classList.remove("hidden");
       if (nameInput) nameInput.value = "";
       renderList();
+      refreshBreakdown();
     } catch (err) {
       console.error("[categories] addDoc error:", err);
       showAddError("Failed to save. Please try again.");
