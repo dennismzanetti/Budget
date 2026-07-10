@@ -13,6 +13,7 @@ import { initNav, navigateTo, getPage } from "./nav.js";
 import { loadCommits } from "./commits.js";
 import { seedAccountsIfEmpty, initAccountsPage } from "./accounts.js";
 import { initTransactionsPage } from "./transactions.js";
+import { initCategoriesPage } from "./categories.js";
 import { loadPartials } from "./partials.js";
 
 const firebaseConfig = {
@@ -92,9 +93,11 @@ function updateUI(user) {
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  // Preload commits on every login so the settings page is ready immediately,
-  // regardless of which page the user lands on.
+  // Preload commits on every login so the settings page is ready immediately.
   loadCommits();
+
+  // Init categories so the list is ready when the user navigates there.
+  initCategoriesPage(user.uid);
 
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
@@ -113,6 +116,7 @@ window.addEventListener('hashchange', () => {
   if (getPage() === 'settings')     loadCommits();
   if (getPage() === 'accounts')     initAccountsPage(auth.currentUser?.uid);
   if (getPage() === 'transactions') initTransactionsPage(auth.currentUser?.uid);
+  if (getPage() === 'categories')   initCategoriesPage(auth.currentUser?.uid);
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
