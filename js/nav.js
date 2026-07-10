@@ -7,7 +7,7 @@
  *
  * Usage:
  *   import { initNav, navigateTo, getPage } from './nav.js';
- *   initNav();            // call once after DOM is ready
+ *   initNav();            // call once after DOM is ready (safe to call multiple times)
  *   navigateTo('budget'); // programmatic navigation
  *   getPage();            // returns the currently active page name
  */
@@ -15,6 +15,9 @@
 /** All known page names (must match id="{name}" in index.html) */
 const PAGES = ['dashboard', 'budget', 'transactions', 'accounts', 'categories', 'reports', 'import', 'settings', 'help'];
 const DEFAULT_PAGE = 'dashboard';
+
+/** Prevent duplicate listener registration across multiple initNav() calls */
+let initialized = false;
 
 /**
  * Derive the target page from the current URL hash.
@@ -64,7 +67,7 @@ function activatePage(page) {
 
 /**
  * Programmatically navigate to a page.
- * Pushes a new history entry so back/forward work.
+ * Updates the URL hash and activates the page.
  * @param {string} page
  */
 export function navigateTo(page) {
@@ -85,15 +88,29 @@ export function getPage() {
 
 /**
  * Initialise the router.
- * Call this once, after the app shell HTML is in the DOM.
+ * Safe to call multiple times — listeners are only registered once.
+ * On subsequent calls it simply re-activates the current page.
  */
 export function initNav() {
-  // Handle browser back / forward
+  if (initialized) {
+    // Re-activate in case DOM was updated (e.g. after partials reload)
+    activatePage(pageFromHash());
+    return;
+  }
+  initialized = true;
+
+  // Handle browser back / forward (history.pushState triggers popstate on back/fwd)
   window.addEventListener('popstate', () => {
     activatePage(pageFromHash());
   });
 
-  // Intercept clicks on nav/tab links so we control the transition
+  // Handle direct hash link clicks (e.g. <a href="#budget">) which fire
+  // hashchange but NOT popstate
+  window.addEventListener('hashchange', () => {
+    activatePage(pageFromHash());
+  });
+
+  // Intercept clicks on nav/tab links — use navigateTo for programmatic nav
   document.addEventListener('click', (e) => {
     const link = e.target.closest('[data-page]');
     if (!link) return;
