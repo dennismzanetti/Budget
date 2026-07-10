@@ -443,3 +443,94 @@ html[data-theme="dark"] .cat-card-tx__amount--expense {
     display: none;
   }
 }
+
+/* ── Emoji on category cards ─────────────────────────────────────── */
+
+/* Emoji badge displayed next to the color swatch and category name */
+.category-card__emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  /* Prevent emoji from stretching card height */
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Emoji field in add / edit forms ─────────────────────────────── */
+
+/* Narrow the emoji column in the 3-col edit grid */
+.form-field--emoji {
+  min-width: 0;
+}
+
+/* Small, square-ish input — just wide enough for a single emoji */
+.form-input--emoji {
+  width: 100%;
+  max-width: 72px;
+  text-align: center;
+  font-size: 1.25rem;
+  padding: 0.35rem 0.5rem;
+  line-height: 1.4;
+  /* Prevent the emoji font-size from making the field too tall */
+  height: 2.4rem;
+}
+
+/* ── Add-category form layout ────────────────────────────────────── */
+
+/* 3-column grid: name takes remaining space, color and emoji are fixed-width */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  align-items: end;
+}
+
+@media (max-width: 500px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Name field spans both columns on very small screens */
+  .form-grid .form-field:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Row of action buttons at the bottom of the add form */
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+/* Title inside the add-category card */
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+/* Inline error message in the add form */
+.form-error {
+  font-size: 0.8rem;
+  color: #c0392b;
+  background: #fdf0ee;
+  border: 1px solid #f5c6c0;
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-error.hidden {
+  display: none;
+}
+
+html[data-theme="dark"] .form-error {
+  color: #f08080;
+  background: rgba(192, 57, 43, 0.15);
+  border-color: rgba(192, 57, 43, 0.35);
+}
