@@ -33,7 +33,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { ensureCategoryExists, getCategoriesMap } from "./categories.js";
 
-const db = getFirestore(getApp());
+// Lazy Firestore init — deferred until first use so initializeApp() has run
+let _db = null;
+function getDb() {
+  if (!_db) _db = getFirestore(getApp());
+  return _db;
+}
 
 // ── CSV Parsing ───────────────────────────────────────────────────────────────
 
@@ -201,7 +206,7 @@ export function parseBofACSV(csvText, accountId) {
 export async function importTransactions(uid, candidates) {
   if (!candidates.length) return { imported: 0, duplicates: 0, errors: [] };
 
-  const txnCol = collection(db, "transactions");
+  const txnCol = collection(getDb(), "transactions");
   const errors = [];
   let duplicates = 0;
   let imported = 0;
@@ -255,7 +260,7 @@ export async function importTransactions(uid, candidates) {
       }
     }
 
-    const batch = writeBatch(db);
+    const batch = writeBatch(getDb());
     let batchCount = 0;
 
     for (const txn of chunk) {
