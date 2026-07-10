@@ -197,6 +197,8 @@ function buildDonut(canvasId, labels, data, colors) {
 }
 
 // ── Build expanded transactions sub-list for a category ───────────────
+// Returns a <li class="cat-breakdown__tx-list-row"> wrapping the <ul>,
+// so it is a valid child of the parent <ul> and nextElementSibling works.
 function buildTxList(catId, type, txns, catsMap) {
   const matching = txns.filter(tx => {
     const txCatId = tx.categoryId || "__none__";
@@ -218,12 +220,18 @@ function buildTxList(catId, type, txns, catsMap) {
     return db - da;
   });
 
+  // Wrap in <li> so the element is a valid child of the parent <ul>
+  const liWrap = document.createElement("li");
+  liWrap.className = "cat-breakdown__tx-list-row";
+  liWrap.dataset.txListFor = catId;
+
   const ul = document.createElement("ul");
   ul.className = "cat-breakdown__tx-list";
 
   if (matching.length === 0) {
     ul.innerHTML = `<li class="cat-breakdown__tx-empty">No transactions found.</li>`;
-    return ul;
+    liWrap.appendChild(ul);
+    return liWrap;
   }
 
   const amtClass = type === "income" ? "cat-breakdown__tx-amount--income" : "cat-breakdown__tx-amount--expense";
@@ -242,7 +250,8 @@ function buildTxList(catId, type, txns, catsMap) {
     ul.appendChild(li);
   });
 
-  return ul;
+  liWrap.appendChild(ul);
+  return liWrap;
 }
 
 // ── Render rows for one panel (income or expense) ─────────────────────
@@ -305,19 +314,21 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMa
         if (open !== li) {
           open.classList.remove("is-expanded");
           open.setAttribute("aria-expanded", "false");
-          open.nextElementSibling?.remove();
+          const next = open.nextElementSibling;
+          if (next?.dataset.txListFor) next.remove();
         }
       });
 
       if (isExpanded) {
         li.classList.remove("is-expanded");
         li.setAttribute("aria-expanded", "false");
-        li.nextElementSibling?.remove();
+        const next = li.nextElementSibling;
+        if (next?.dataset.txListFor) next.remove();
       } else {
         li.classList.add("is-expanded");
         li.setAttribute("aria-expanded", "true");
-        const txList = buildTxList(catId, type, txns, catsMap);
-        li.insertAdjacentElement("afterend", txList);
+        const txListItem = buildTxList(catId, type, txns, catsMap);
+        li.insertAdjacentElement("afterend", txListItem);
       }
     }
 
