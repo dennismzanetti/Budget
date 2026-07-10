@@ -14,6 +14,7 @@ import { loadCommits } from "./commits.js";
 import { seedAccountsIfEmpty, initAccountsPage } from "./accounts.js";
 import { initTransactionsPage } from "./transactions.js";
 import { initCategoriesPage } from "./categories.js";
+import { initImportPage } from "./bofa-import-page.js";
 import { loadPartials } from "./partials.js";
 
 const firebaseConfig = {
@@ -99,8 +100,12 @@ function updateUI(user) {
   // Init categories so the list is ready when the user navigates there.
   initCategoriesPage(user.uid);
 
+  // Init import page so the account dropdown is ready when the user navigates there.
+  initImportPage();
+
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
+  if (getPage() === 'import')       initImportPage();
 }
 
 async function initAuth() {
@@ -117,6 +122,7 @@ window.addEventListener('hashchange', () => {
   if (getPage() === 'accounts')     initAccountsPage(auth.currentUser?.uid);
   if (getPage() === 'transactions') initTransactionsPage(auth.currentUser?.uid);
   if (getPage() === 'categories')   initCategoriesPage(auth.currentUser?.uid);
+  if (getPage() === 'import')       initImportPage();
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────

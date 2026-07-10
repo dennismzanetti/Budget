@@ -59,9 +59,17 @@ export function initImportPage() {
     return;
   }
 
-  // Populate accounts dropdown — called unconditionally since populateAccountSelect
-  // does not use the uid and currentUid may not be set yet when the page first loads.
-  populateAccountSelect(null, accountSelect);
+  // Populate accounts dropdown — wait for a valid uid before querying Firestore
+  if (currentUid) {
+    populateAccountSelect(currentUid, accountSelect);
+  } else {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        populateAccountSelect(user.uid, accountSelect);
+        unsubscribe();
+      }
+    });
+  }
 
   let selectedFile = null;
 
