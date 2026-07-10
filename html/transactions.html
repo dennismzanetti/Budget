@@ -1,49 +1,59 @@
 <section class="page hidden" id="transactions" aria-hidden="true">
 
-  <!-- Dashboard header: stat cards + filters in one strip -->
-  <div class="txn-dashboard-header">
-    <div class="page-header txn-page-header">
-      <h2 class="page-title">Transactions</h2>
-    </div>
+  <!-- Page header -->
+  <div class="txn-page-header-bar">
+    <h2 class="page-title">Transactions</h2>
+  </div>
 
-    <!-- Stat cards -->
-    <div class="txn-summary-cards" aria-live="polite">
-      <div class="txn-stat-card">
-        <span class="txn-stat-label"># Transactions</span>
+  <!-- Summary stat cards (above filters) -->
+  <div class="txn-summary-section" aria-live="polite">
+    <div class="txn-stat-card">
+      <span class="txn-stat-icon">&#35;</span>
+      <div class="txn-stat-body">
         <span id="txnSummaryCount" class="txn-stat-value">—</span>
+        <span class="txn-stat-label">Transactions</span>
       </div>
-      <div class="txn-stat-card txn-stat-card--income">
-        <span class="txn-stat-label">Income</span>
+    </div>
+    <div class="txn-stat-card txn-stat-card--income">
+      <span class="txn-stat-icon">&#8593;</span>
+      <div class="txn-stat-body">
         <span id="txnSummaryIncome" class="txn-stat-value txn-stat-value--income">—</span>
+        <span class="txn-stat-label">Income</span>
       </div>
-      <div class="txn-stat-card txn-stat-card--expense">
-        <span class="txn-stat-label">Expenses</span>
+    </div>
+    <div class="txn-stat-card txn-stat-card--expense">
+      <span class="txn-stat-icon">&#8595;</span>
+      <div class="txn-stat-body">
         <span id="txnSummaryExpense" class="txn-stat-value txn-stat-value--expense">—</span>
+        <span class="txn-stat-label">Expenses</span>
       </div>
-      <div class="txn-stat-card txn-stat-card--net">
-        <span class="txn-stat-label">Net</span>
+    </div>
+    <div class="txn-stat-card txn-stat-card--net">
+      <span class="txn-stat-icon">=</span>
+      <div class="txn-stat-body">
         <span id="txnSummaryNet" class="txn-stat-value txn-stat-value--net">—</span>
+        <span class="txn-stat-label">Net</span>
       </div>
     </div>
+  </div>
 
-    <!-- Inline filter strip -->
-    <div class="txn-filter-strip" aria-label="Transaction filters">
-      <select id="txnFilterAccount" class="txn-filter-input" title="Account">
-        <option value="">All Accounts</option>
-      </select>
-      <select id="txnFilterCategory" class="txn-filter-input" title="Category">
-        <option value="">All Categories</option>
-      </select>
-      <select id="txnFilterType" class="txn-filter-input" title="Type">
-        <option value="">All Types</option>
-        <option value="income">Income</option>
-        <option value="expense">Expense</option>
-      </select>
-      <input id="txnFilterDateFrom" class="txn-filter-input" type="date" title="From date" />
-      <input id="txnFilterDateTo" class="txn-filter-input" type="date" title="To date" />
-      <input id="txnSearch" class="txn-filter-input txn-filter-search" type="search" placeholder="Search…" />
-      <button id="txnClearFilters" class="txn-clear-btn hidden" type="button" title="Clear filters">✕ Clear</button>
-    </div>
+  <!-- Filter strip -->
+  <div class="txn-filter-bar" aria-label="Transaction filters">
+    <select id="txnFilterAccount" class="txn-filter-input" title="Account">
+      <option value="">All Accounts</option>
+    </select>
+    <select id="txnFilterCategory" class="txn-filter-input" title="Category">
+      <option value="">All Categories</option>
+    </select>
+    <select id="txnFilterType" class="txn-filter-input" title="Type">
+      <option value="">All Types</option>
+      <option value="income">Income</option>
+      <option value="expense">Expense</option>
+    </select>
+    <input id="txnFilterDateFrom" class="txn-filter-input" type="date" title="From date" />
+    <input id="txnFilterDateTo" class="txn-filter-input" type="date" title="To date" />
+    <input id="txnSearch" class="txn-filter-input txn-filter-search" type="search" placeholder="Search…" />
+    <button id="txnClearFilters" class="txn-clear-btn hidden" type="button" title="Clear filters">&#10005; Clear</button>
   </div>
 
   <!-- Scrollable table region -->
@@ -53,28 +63,28 @@
         <thead>
           <tr>
             <th scope="col" class="txn-col-date txn-th--sortable" data-col="date" aria-sort="descending">
-              Date <span class="txn-sort-icon" aria-hidden="true">↓</span>
+              Date <span class="txn-sort-icon" aria-hidden="true">&#8595;</span>
             </th>
             <th scope="col" class="txn-col-desc txn-th--sortable" data-col="payee" aria-sort="none">
-              Description <span class="txn-sort-icon" aria-hidden="true">↕</span>
+              Description <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
             <th scope="col" class="txn-col-account txn-hide-mobile txn-th--sortable" data-col="account" aria-sort="none">
-              Account <span class="txn-sort-icon" aria-hidden="true">↕</span>
+              Account <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
             <th scope="col" class="txn-col-category txn-th--sortable" data-col="category" aria-sort="none">
-              Category <span class="txn-sort-icon" aria-hidden="true">↕</span>
+              Category <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
             <th scope="col" class="txn-col-type txn-hide-mobile txn-th--sortable" data-col="type" aria-sort="none">
-              Type <span class="txn-sort-icon" aria-hidden="true">↕</span>
+              Type <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
             <th scope="col" class="txn-col-amount txn-th--sortable" data-col="amount" aria-sort="none">
-              Amount <span class="txn-sort-icon" aria-hidden="true">↕</span>
+              Amount <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
             <th scope="col" class="txn-col-actions"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody id="txnTableBody" aria-live="polite">
-          <tr><td colspan="7" class="txn-loading">Loading…</td></tr>
+          <tr><td colspan="7" class="txn-loading">Loading&#8230;</td></tr>
         </tbody>
       </table>
     </div>
