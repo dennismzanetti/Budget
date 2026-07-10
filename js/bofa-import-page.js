@@ -17,17 +17,17 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import { importBofAFile } from "./import.js";
 import { populateAccountSelect } from "./accounts.js";
 
-// ── File selection helpers ────────────────────────────────────────────────
+// ── File selection helpers ────────────────────────────────────────────
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ── Re-init guard — event listeners are bound only once ──────────────────
+// ── Re-init guard — event listeners are bound only once ─────────────────
 let _importInited = false;
 
-// ── Page init — deferred until #import is active ─────────────────────────
+// ── Page init — deferred until #import is active ─────────────────────
 export function initImportPage() {
   if (_importInited) return;
 
@@ -117,14 +117,14 @@ export function initImportPage() {
     errorBanner.textContent = "";
   }
 
-  // ── File input events ────────────────────────────────────────────────────
+  // ── File input events ────────────────────────────────────────────
   fileInput.addEventListener("change", () => {
     if (fileInput.files[0]) setFile(fileInput.files[0]);
   });
   fileClearBtn.addEventListener("click", () => clearFile());
   accountSelect.addEventListener("change", updateSubmitState);
 
-  // ── Progress helpers ─────────────────────────────────────────────────────
+  // ── Progress helpers ───────────────────────────────────────────────
   const STEPS = { read: 15, parse: 45, write: 85, done: 100 };
 
   function setProgress(step, message) {
@@ -134,9 +134,11 @@ export function initImportPage() {
     progressMsg.textContent = message;
   }
 
-  // ── Import flow ──────────────────────────────────────────────────────────
+  // ── Import flow ──────────────────────────────────────────────────────
   submitBtn.addEventListener("click", async () => {
     if (!selectedFile || !accountSelect.value || !currentUid) return;
+    // Capture the human-readable account name from the selected option
+    const accountName = accountSelect.options[accountSelect.selectedIndex]?.text?.trim() || "";
     hideError();
     uploadCard.classList.add("hidden");
     progressCard.classList.remove("hidden");
@@ -147,7 +149,8 @@ export function initImportPage() {
         currentUid,
         selectedFile,
         accountSelect.value,
-        ({ step, message }) => setProgress(step, message)
+        ({ step, message }) => setProgress(step, message),
+        accountName
       );
       showResult(result);
     } catch (err) {
@@ -157,8 +160,8 @@ export function initImportPage() {
     }
   });
 
-  // ── Results display ──────────────────────────────────────────────────────
-  function showResult({ imported, duplicates, skippedRows, parseErrors, writeErrors }) {
+  // ── Results display ────────────────────────────────────────────────
+  function showResult({ imported, duplicates, skippedRows, parseErrors, writeErrors, accountName }) {
     progressCard.classList.add("hidden");
     resultCard.classList.remove("hidden");
     const hasErrors = (parseErrors?.length || 0) + (writeErrors?.length || 0) > 0;
@@ -166,8 +169,9 @@ export function initImportPage() {
     resultIcon.innerHTML = success
       ? `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--success"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
       : `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="import-result-icon--warn"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    const acctLabel = accountName ? ` into ${accountName}` : "";
     resultTitle.textContent = imported > 0
-      ? `${imported} transaction${imported !== 1 ? "s" : ""} imported`
+      ? `${imported} transaction${imported !== 1 ? "s" : ""} imported${acctLabel}`
       : "No new transactions imported";
     resultSummary.textContent = duplicates > 0
       ? `${duplicates} duplicate${duplicates !== 1 ? "s" : ""} skipped \u2014 already in your database.`
@@ -191,7 +195,7 @@ export function initImportPage() {
     }
   }
 
-  // ── Reset / import again ─────────────────────────────────────────────────
+  // ── Reset / import again ───────────────────────────────────────────────
   importAgainBtn.addEventListener("click", () => {
     clearFile();
     hideError();
