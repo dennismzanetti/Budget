@@ -127,12 +127,12 @@ function fmtDate(ts) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ── Fetch transactions for a given period from global collection ───────
-async function fetchTransactionsForPeriod(year, month) {
+// ── Fetch transactions for a given period from user's subcollection ────
+async function fetchTransactionsForPeriod(uid, year, month) {
   // month is 0-based (JS Date)
   const start = new Date(year, month, 1);
   const end   = new Date(year, month + 1, 1);
-  const txRef = collection(getDb(), "transactions");
+  const txRef = collection(getDb(), "users", uid, "transactions");
   const q = query(
     txRef,
     where("date", ">=", Timestamp.fromDate(start)),
@@ -328,7 +328,7 @@ function renderBreakdownRows(rowsEl, totalsMap, total, chart, type, txns, catsMa
 
 // ── Main breakdown renderer ────────────────────────────────────────────
 // Returns { incomeTotals, expenseTotals } so the card list can reflect period data
-async function renderBreakdown(year, month, catsMap) {
+async function renderBreakdown(uid, year, month, catsMap) {
   const periodEl      = document.getElementById("catBreakdownPeriod");
   const incomeTotalEl = document.getElementById("catIncomeTotalLabel");
   const expTotalEl    = document.getElementById("catExpenseTotalLabel");
@@ -342,7 +342,7 @@ async function renderBreakdown(year, month, catsMap) {
 
   let txns;
   try {
-    txns = await fetchTransactionsForPeriod(year, month);
+    txns = await fetchTransactionsForPeriod(uid, year, month);
   } catch (err) {
     console.error("[categories] breakdown fetch error:", err);
     txns = [];
@@ -478,7 +478,7 @@ export async function initCategoriesPage(_uid) {
 
   async function refreshBreakdown() {
     const catsMap = await getCategoriesMap(_uid);
-    const { incomeTotals, expenseTotals } = await renderBreakdown(breakdownYear, breakdownMonth, catsMap);
+    const { incomeTotals, expenseTotals } = await renderBreakdown(_uid, breakdownYear, breakdownMonth, catsMap);
     _lastIncomeTotals  = incomeTotals;
     _lastExpenseTotals = expenseTotals;
     // Re-render cards so period totals update
