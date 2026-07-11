@@ -85,6 +85,49 @@
   opacity: 0.75;
 }
 
+/* ── Expandable card: column layout so panel sits below header ────────── */
+.account-card--expandable {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* The horizontal header row inside an expandable card */
+.account-card__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  width: 100%;
+}
+
+/* ── Transaction panel (shown below __main when expanded) ─────────────── */
+.account-card__tx-panel {
+  border-top: 1px solid var(--border);
+  padding: 0.5rem 1rem 0.75rem;
+  background: var(--surface-2);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.account-card__tx-panel[hidden] {
+  display: none;
+}
+
+/* ── Chevron rotate on expand ─────────────────────────────────────────── */
+.account-card__chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+  display: block;
+}
+
+.account-card--expandable[aria-expanded="true"] .account-card__chevron {
+  transform: rotate(180deg);
+}
+
 .account-card__info {
   display: flex;
   flex-direction: column;
@@ -401,9 +444,13 @@ html[data-theme="dark"] .account-delete-confirm-btn:hover {
     grid-template-columns: 1fr;
   }
 
-  .account-card {
+  .account-card--expandable {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  .account-card__main {
+    flex-wrap: wrap;
   }
 
   .account-card__actions {
