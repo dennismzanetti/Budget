@@ -13,6 +13,7 @@ import { seedAccountsIfEmpty, initAccountsPage } from "./accounts.js";
 import { initTransactionsPage } from "./transactions.js";
 import { initCategoriesPage } from "./categories.js";
 import { initImportPage } from "./bofa-import-page.js";
+import { initBudgetsPage } from "./budgets.js";
 import { loadPartials } from "./partials.js";
 
 const firebaseConfig = {
@@ -29,7 +30,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
+// ── Theme ──────────────────────────────────────────────────────────────────────────────
 function setTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
 }
@@ -48,7 +49,7 @@ function bindThemeToggles() {
   });
 }
 
-// ── Auth ───────────────────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────────────────
 async function login() {
   await signInWithPopup(auth, provider);
 }
@@ -58,12 +59,12 @@ async function logout() {
 }
 
 function updateUI(user) {
-  const loggedOutView = document.getElementById("loggedOutView");
-  const loggedInView  = document.getElementById("loggedInView");
-  const userPhoto     = document.getElementById("userPhoto");
+  const loggedOutView  = document.getElementById("loggedOutView");
+  const loggedInView   = document.getElementById("loggedInView");
+  const userPhoto      = document.getElementById("userPhoto");
   const userPhotoLarge = document.getElementById("userPhotoLarge");
-  const userNameEl    = document.getElementById("userNameSettings");
-  const userEmailEl   = document.getElementById("userEmailSettings");
+  const userNameEl     = document.getElementById("userNameSettings");
+  const userEmailEl    = document.getElementById("userEmailSettings");
 
   if (!user) {
     loggedOutView.classList.remove("hidden");
@@ -74,34 +75,26 @@ function updateUI(user) {
   loggedInView.classList.remove("hidden");
 
   const photo = user.photoURL || "https://placehold.co/72x72";
-  if (userPhoto) userPhoto.src = photo;
+  if (userPhoto)      userPhoto.src = photo;
   if (userPhotoLarge) userPhotoLarge.src = photo;
-  if (userNameEl) userNameEl.textContent = user.displayName || "User";
-  if (userEmailEl) userEmailEl.textContent = user.email || "";
+  if (userNameEl)     userNameEl.textContent = user.displayName || "User";
+  if (userEmailEl)    userEmailEl.textContent = user.email || "";
 
-  // initNav() is called once after loadPartials() in the IIFE below.
-  // Call it again here so active-page highlighting re-runs after login/logout.
   initNav();
 
   seedAccountsIfEmpty(user.uid)
     .then(() => initAccountsPage(user.uid))
     .catch(err => console.error("[seed] accounts seed failed:", err));
 
-  // Preload commits on every login so the settings page is ready immediately.
   loadCommits();
-
-  // Init categories so the list is ready when the user navigates there.
   initCategoriesPage(user.uid);
-
-  // Preload transactions so the list is ready when the user navigates there.
   initTransactionsPage(user.uid);
-
-  // Init import page so the account dropdown is ready when the user navigates there.
   initImportPage();
 
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
   if (getPage() === 'import')       initImportPage();
+  if (getPage() === 'budget')       initBudgetsPage();
 }
 
 function initAuth() {
@@ -114,15 +107,16 @@ window.addEventListener('hashchange', () => {
   if (getPage() === 'transactions') initTransactionsPage(auth.currentUser?.uid);
   if (getPage() === 'categories')   initCategoriesPage(auth.currentUser?.uid);
   if (getPage() === 'import')       initImportPage();
+  if (getPage() === 'budget')       initBudgetsPage();
 });
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────────────
 export { db };
 
 (async () => {
   initTheme();
-  await loadPartials();   // inject all html/ partials into the DOM
-  initNav();              // wire router NOW — all <section> targets exist
+  await loadPartials();
+  initNav();
   bindThemeToggles();
 
   const heroLoginBtn = document.getElementById("heroLoginBtn");
