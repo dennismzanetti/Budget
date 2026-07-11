@@ -15,6 +15,7 @@ import { initCategoriesPage } from "./categories.js";
 import { initImportPage } from "./bofa-import-page.js";
 import { initBudgetsPage } from "./budgets.js";
 import { loadPartials } from "./partials.js";
+import { initDbExportImport } from "./db-export-import.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
@@ -90,6 +91,7 @@ function updateUI(user) {
   initCategoriesPage(user.uid);
   initTransactionsPage(user.uid);
   initImportPage();
+  initDbExportImport();
 
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
