@@ -1,4 +1,76 @@
-<section class="page hidden" id="reports" aria-hidden="true">
+<div class="page-header reports-header">
   <h2 class="page-title">Reports</h2>
-  <div class="card"><p class="subtle">Monthly reports coming soon.</p></div>
-</section>
+  <select id="reportsPeriod" class="reports-period-select" aria-label="Report period">
+    <option value="3">Last 3 months</option>
+    <option value="6" selected>Last 6 months</option>
+    <option value="12">Last 12 months</option>
+  </select>
+</div>
+
+<div id="reportsContent">
+
+  <!-- KPI Row -->
+  <div class="reports-kpi-row">
+    <div class="reports-kpi-card">
+      <span class="reports-kpi-label">Total Income</span>
+      <span id="reportsKpiIncome" class="reports-kpi-value">—</span>
+    </div>
+    <div class="reports-kpi-card">
+      <span class="reports-kpi-label">Total Expenses</span>
+      <span id="reportsKpiExpense" class="reports-kpi-value">—</span>
+    </div>
+    <div class="reports-kpi-card">
+      <span class="reports-kpi-label">Net Savings</span>
+      <span id="reportsKpiNet" class="reports-kpi-value">—</span>
+    </div>
+    <div class="reports-kpi-card">
+      <span class="reports-kpi-label">Savings Rate</span>
+      <span id="reportsKpiRate" class="reports-kpi-value">—</span>
+    </div>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="reports-charts-grid">
+
+    <div class="reports-chart-card">
+      <div class="reports-chart-title">Income vs Expenses</div>
+      <div class="reports-chart-wrap">
+        <canvas id="reportsBarChart" aria-label="Income vs Expenses bar chart"></canvas>
+      </div>
+    </div>
+
+    <div class="reports-chart-card">
+      <div class="reports-chart-title">Monthly Net Savings</div>
+      <div class="reports-chart-wrap">
+        <canvas id="reportsLineChart" aria-label="Monthly net savings line chart"></canvas>
+      </div>
+    </div>
+
+    <div class="reports-chart-card">
+      <div class="reports-chart-title">Spending by Category</div>
+      <div class="reports-chart-wrap reports-chart-wrap--tall" style="position:relative">
+        <canvas id="reportsDoughnutChart" aria-label="Spending by category doughnut chart"></canvas>
+        <p id="reportsDoughnutNoData" class="hidden reports-empty-row">No categorised expenses in this period.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Category Breakdown Table -->
+  <div class="reports-cat-section">
+    <h3>Top Spending Categories</h3>
+    <table class="reports-cat-table" aria-label="Top spending categories">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th style="text-align:right">Amount</th>
+          <th style="text-align:right">% of Expenses</th>
+        </tr>
+      </thead>
+      <tbody id="reportsCatTableBody">
+        <tr><td colspan="3" class="reports-empty-row">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>

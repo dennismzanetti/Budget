@@ -14,6 +14,7 @@ import { initTransactionsPage } from "./transactions.js";
 import { initCategoriesPage } from "./categories.js";
 import { initImportPage } from "./bofa-import-page.js";
 import { initBudgetsPage } from "./budgets.js";
+import { initReportsPage } from "./reports.js";
 import { loadPartials } from "./partials.js";
 import { initDbExportImport } from "./db-export-import.js";
 
@@ -97,6 +98,7 @@ function updateUI(user) {
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
   if (getPage() === 'import')       initImportPage();
   if (getPage() === 'budget')       initBudgetsPage();
+  if (getPage() === 'reports')      initReportsPage(user.uid);
 }
 
 function initAuth() {
@@ -110,6 +112,7 @@ window.addEventListener('hashchange', () => {
   if (getPage() === 'categories')   initCategoriesPage(auth.currentUser?.uid);
   if (getPage() === 'import')       initImportPage();
   if (getPage() === 'budget')       initBudgetsPage();
+  if (getPage() === 'reports')      initReportsPage(auth.currentUser?.uid);
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────────────
