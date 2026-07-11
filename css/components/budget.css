@@ -1,0 +1,398 @@
+/* ── Budget Page ─────────────────────────────────────────────────────── */
+
+#budget {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Header bar ── */
+.bgt-header-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 1rem);
+  flex-wrap: wrap;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem) var(--space-3, 0.75rem);
+}
+
+.bgt-header-bar .page-title {
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.bgt-header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.bgt-month-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.bgt-month-input {
+  height: 30px;
+  padding: 0 var(--space-2, 0.5rem);
+  font-size: 0.78rem;
+  color: var(--text);
+  background: var(--bg, #f5f7fb);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 12px);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.bgt-month-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.btn-sm {
+  height: 30px;
+  padding: 0 var(--space-3, 0.75rem);
+  font-size: 0.75rem;
+}
+
+/* ── Summary stat cards ── */
+.bgt-summary-strip {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.bgt-stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  background: var(--bg, #f5f7fb);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 12px);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 6%, transparent);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.bgt-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius-sm, 12px) var(--radius-sm, 12px) 0 0;
+  background: var(--border);
+}
+
+.bgt-stat--income-budget::before,
+.bgt-stat--income-actual::before  { background: var(--color-success, #437a22); }
+.bgt-stat--expense-budget::before,
+.bgt-stat--expense-actual::before { background: var(--color-notification, #a13544); }
+
+.bgt-stat-card:hover {
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--text) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.bgt-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.bgt-stat--income-budget .bgt-stat-icon,
+.bgt-stat--income-actual .bgt-stat-icon {
+  background: color-mix(in srgb, var(--color-success, #437a22) 12%, transparent);
+  color: var(--color-success, #437a22);
+}
+
+.bgt-stat--expense-budget .bgt-stat-icon,
+.bgt-stat--expense-actual .bgt-stat-icon {
+  background: color-mix(in srgb, var(--color-notification, #a13544) 12%, transparent);
+  color: var(--color-notification, #a13544);
+}
+
+.bgt-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bgt-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.bgt-stat-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ── Toolbar (show-zeros toggle) ── */
+.bgt-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 1rem);
+  padding: var(--space-2, 0.5rem) var(--space-5, 1.25rem);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.bgt-zero-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.78rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.bgt-zero-toggle input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* ── Table region ── */
+.bgt-table-region {
+  flex: 1;
+  overflow: hidden;
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.bgt-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 12px);
+  background: var(--surface);
+}
+
+/* ── Table ── */
+.bgt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.bgt-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: var(--surface-2, #eef3f8);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.bgt-col-budget,
+.bgt-col-actual,
+.bgt-col-variance { text-align: right; }
+
+.bgt-col-progress { width: 160px; min-width: 120px; }
+
+/* ── Group header rows ── */
+.bgt-group-header td {
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: var(--surface-2, #eef3f8);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.bgt-group-header--income td { color: var(--color-success, #437a22); }
+.bgt-group-header--expense td { color: var(--color-notification, #a13544); }
+
+/* ── Data rows ── */
+.bgt-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  transition: background 120ms ease;
+}
+
+.bgt-row:hover { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+
+.bgt-row.is-hidden { display: none; }
+
+.bgt-row td {
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  vertical-align: middle;
+}
+
+/* ── Category cell ── */
+.bgt-cell-category {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.bgt-cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Numeric cells ── */
+.bgt-col-budget,
+.bgt-col-actual,
+.bgt-col-variance {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bgt-value-positive { color: var(--color-success, #437a22); }
+.bgt-value-negative { color: var(--color-notification, #a13544); }
+.bgt-value-neutral  { color: var(--muted); }
+
+/* ── Inline budget input (edit mode) ── */
+.bgt-budget-display {
+  cursor: pointer;
+  display: inline-block;
+  min-width: 70px;
+  text-align: right;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 120ms ease;
+}
+
+.bgt-budget-display:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.bgt-budget-input {
+  width: 90px;
+  height: 26px;
+  padding: 0 var(--space-2, 0.5rem);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent);
+  display: none;
+}
+
+.bgt-budget-input.is-active { display: inline-block; }
+.bgt-budget-display.is-editing { display: none; }
+
+/* ── Progress bar ── */
+.bgt-progress-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-width: 120px;
+}
+
+.bgt-progress-track {
+  flex: 1;
+  height: 6px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.bgt-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--primary);
+  transition: width 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 100%;
+}
+
+.bgt-progress-fill--over   { background: var(--color-notification, #a13544); }
+.bgt-progress-fill--under  { background: var(--primary); }
+.bgt-progress-fill--income { background: var(--color-success, #437a22); }
+.bgt-progress-fill--none   { background: var(--border); }
+
+.bgt-progress-pct {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Loading / empty state ── */
+.bgt-loading {
+  text-align: center;
+  padding: var(--space-12, 3rem) var(--space-4, 1rem);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ── Responsive: collapse stat grid on narrow screens ── */
+@media (max-width: 700px) {
+  .bgt-summary-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .bgt-summary-strip {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2, 0.5rem);
+    padding: var(--space-3, 0.75rem);
+  }
+
+  .bgt-stat-value { font-size: 0.95rem; }
+
+  .bgt-header-controls { gap: var(--space-2, 0.5rem); }
+
+  .bgt-col-progress { display: none; }
+}

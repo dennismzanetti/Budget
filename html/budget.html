@@ -1,32 +1,76 @@
 <section class="page hidden" id="budget" aria-hidden="true">
-  <div class="budget-header">
+
+  <!-- ── Header bar ── -->
+  <div class="bgt-header-bar">
     <h2 class="page-title">Budgets</h2>
-    <div class="budget-controls">
-      <label>Month: <input id="budget-period" type="month"></label>
-      <button id="budget-copy-button" class="btn btn-secondary">Copy from previous month</button>
-      <button id="budget-refresh-summary" class="btn btn-secondary">Refresh summary</button>
+    <div class="bgt-header-controls">
+      <label class="bgt-month-label">
+        <span>Month</span>
+        <input id="budget-period" type="month" class="bgt-month-input" />
+      </label>
+      <button id="budget-copy-button" class="btn btn-secondary btn-sm">Copy from Previous Month</button>
+      <button id="budget-mode-toggle" class="btn btn-secondary btn-sm" data-mode="view">Edit Budgets</button>
     </div>
   </div>
 
-  <section class="budget-editor">
-    <h3>Category Budgets</h3>
-    <table class="budget-editor-table">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th>Expense budget</th>
-          <th>Income budget</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="budget-editor-tbody">
-        <tr><td colspan="4">Loading...</td></tr>
-      </tbody>
-    </table>
-  </section>
+  <!-- ── Summary stat cards ── -->
+  <div class="bgt-summary-strip" id="bgt-summary-strip">
+    <div class="bgt-stat-card bgt-stat--income-budget">
+      <div class="bgt-stat-icon">↑$</div>
+      <div class="bgt-stat-body">
+        <div class="bgt-stat-value" id="bgt-stat-income-budget">—</div>
+        <div class="bgt-stat-label">Income Budget</div>
+      </div>
+    </div>
+    <div class="bgt-stat-card bgt-stat--income-actual">
+      <div class="bgt-stat-icon">↑</div>
+      <div class="bgt-stat-body">
+        <div class="bgt-stat-value" id="bgt-stat-income-actual">—</div>
+        <div class="bgt-stat-label">Income Actual</div>
+      </div>
+    </div>
+    <div class="bgt-stat-card bgt-stat--expense-budget">
+      <div class="bgt-stat-icon">↓$</div>
+      <div class="bgt-stat-body">
+        <div class="bgt-stat-value" id="bgt-stat-expense-budget">—</div>
+        <div class="bgt-stat-label">Expense Budget</div>
+      </div>
+    </div>
+    <div class="bgt-stat-card bgt-stat--expense-actual">
+      <div class="bgt-stat-icon">↓</div>
+      <div class="bgt-stat-body">
+        <div class="bgt-stat-value" id="bgt-stat-expense-actual">—</div>
+        <div class="bgt-stat-label">Expense Actual</div>
+      </div>
+    </div>
+  </div>
 
-  <section class="budget-summary-section">
-    <h3>Budget vs Actual</h3>
-    <div id="budget-summary"></div>
-  </section>
+  <!-- ── Show zero rows toggle ── -->
+  <div class="bgt-toolbar">
+    <label class="bgt-zero-toggle">
+      <input type="checkbox" id="bgt-show-zeros" />
+      <span>Show categories with no activity</span>
+    </label>
+  </div>
+
+  <!-- ── Main table (view + inline edit) ── -->
+  <div class="bgt-table-region">
+    <div class="bgt-table-wrap" id="bgt-table-wrap">
+      <table class="bgt-table" id="bgt-table">
+        <thead>
+          <tr>
+            <th class="bgt-col-category">Category</th>
+            <th class="bgt-col-budget">Budget</th>
+            <th class="bgt-col-actual">Actual</th>
+            <th class="bgt-col-variance">Variance</th>
+            <th class="bgt-col-progress">Progress</th>
+          </tr>
+        </thead>
+        <tbody id="bgt-tbody">
+          <tr><td colspan="5" class="bgt-loading">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </section>
