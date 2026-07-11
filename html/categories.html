@@ -9,16 +9,25 @@
 
   <!-- ── Breakdown section ───────────────────────────────────────── -->
   <div class="cat-breakdown" id="catBreakdown">
-    <div class="cat-breakdown__controls">
-      <button class="cat-breakdown__nav" id="catBreakdownPrev" aria-label="Previous month">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <span class="cat-breakdown__period" id="catBreakdownPeriod">Loading…</span>
-      <button class="cat-breakdown__nav" id="catBreakdownNext" aria-label="Next month">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <!-- Collapsible header row: nav controls + toggle button -->
+    <div class="cat-breakdown__header">
+      <div class="cat-breakdown__controls">
+        <button class="cat-breakdown__nav" id="catBreakdownPrev" aria-label="Previous month">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="cat-breakdown__period" id="catBreakdownPeriod">Loading…</span>
+        <button class="cat-breakdown__nav" id="catBreakdownNext" aria-label="Next month">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <button class="cat-breakdown__toggle" id="catBreakdownToggle" aria-expanded="true" aria-controls="catBreakdownCharts" aria-label="Toggle charts">
+        <span class="cat-breakdown__toggle-label">Charts</span>
+        <svg class="cat-breakdown__toggle-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
     </div>
-    <div class="cat-breakdown__charts">
+
+    <!-- Collapsible charts body -->
+    <div class="cat-breakdown__charts" id="catBreakdownCharts">
       <!-- Income card -->
       <div class="cat-breakdown__card cat-breakdown__card--income">
         <div class="cat-breakdown__card-title">Income</div>
@@ -83,4 +92,17 @@
   </div>
 
   <ul id="categoriesList" class="accounts-list" aria-live="polite"></ul>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('catBreakdownToggle');
+      var panel = document.getElementById('catBreakdownCharts');
+      if (!btn || !panel) return;
+      btn.addEventListener('click', function () {
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.classList.toggle('is-collapsed', expanded);
+      });
+    })();
+  </script>
 </section>
