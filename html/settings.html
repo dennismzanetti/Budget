@@ -10,6 +10,41 @@
     </div>
   </section>
 
+  <section class="card">
+    <p class="eyebrow">Data</p>
+    <h3>Import / Export</h3>
+    <p class="subtle" style="margin-top: 0.25rem; margin-bottom: 1rem;">
+      Export a full backup of all app data, or fully replace the database with a previous backup.
+    </p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="exportDbBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export Database
+      </button>
+      <label class="btn btn-ghost" for="importDbFile" style="cursor:pointer;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import Backup
+      </label>
+      <input type="file" id="importDbFile" accept=".json" class="sr-only" aria-label="Select backup file to import" />
+    </div>
+    <p id="importExportStatus" class="subtle" aria-live="polite" style="margin-top: 0.75rem; min-height: 1.25rem;"></p>
+  </section>
+
+  <!-- Import confirmation modal -->
+  <div id="importConfirmModal" class="modal-overlay hidden" aria-modal="true" aria-hidden="true" role="dialog" aria-labelledby="importModalTitle">
+    <div class="modal-box">
+      <h3 id="importModalTitle">Replace all data?</h3>
+      <p class="subtle" style="margin: 0.5rem 0 1rem;">
+        This will <strong>permanently delete all current data</strong> and replace it with the contents of the backup:
+      </p>
+      <ul id="importSummary" class="subtle" style="padding-left: 1.25rem; margin-bottom: 1rem;"></ul>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="importConfirmBtn">Yes, Replace Data</button>
+        <button class="btn btn-ghost" id="importCancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <section class="card commits-card">
     <div class="commits-header">
       <div>
