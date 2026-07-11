@@ -36,13 +36,18 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { getCategoriesMap } from "./categories.js";
-import { formatCents } from "./transactions.js";
 
 let _db = null;
 
 function getDb() {
   if (!_db) _db = getFirestore(getApp());
   return _db;
+}
+
+function formatCents(cents) {
+  const n = typeof cents === "number" ? cents : parseInt(cents, 10);
+  if (isNaN(n)) return "$0.00";
+  return "$" + (Math.abs(n) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function budgetsRef() {
