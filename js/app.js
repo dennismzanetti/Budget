@@ -16,7 +16,6 @@ import { initImportPage } from "./bofa-import-page.js";
 import { initBudgetsPage } from "./budgets.js";
 import { initReportsPage } from "./reports.js";
 import { loadPartials } from "./partials.js";
-import { initDbExportImport } from "./db-export-import.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
@@ -32,7 +31,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ── Theme ──────────────────────────────────────────────────────────────────────────────
+// ── Theme ──────────────────────────────────────────────────────────────────
 function setTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
 }
@@ -51,7 +50,7 @@ function bindThemeToggles() {
   });
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────────────────
 async function login() {
   await signInWithPopup(auth, provider);
 }
@@ -92,13 +91,12 @@ function updateUI(user) {
   initCategoriesPage(user.uid);
   initTransactionsPage(user.uid);
   initImportPage();
-  initDbExportImport();
 
   if (getPage() === 'accounts')     initAccountsPage(user.uid);
   if (getPage() === 'transactions') initTransactionsPage(user.uid);
   if (getPage() === 'import')       initImportPage();
   if (getPage() === 'budget')       initBudgetsPage();
-  if (getPage() === 'reports')      initReportsPage(user.uid);
+  if (getPage() === 'reports')      initReportsPage();
 }
 
 function initAuth() {
@@ -112,10 +110,10 @@ window.addEventListener('hashchange', () => {
   if (getPage() === 'categories')   initCategoriesPage(auth.currentUser?.uid);
   if (getPage() === 'import')       initImportPage();
   if (getPage() === 'budget')       initBudgetsPage();
-  if (getPage() === 'reports')      initReportsPage(auth.currentUser?.uid);
+  if (getPage() === 'reports')      initReportsPage();
 });
 
-// ── Init ─────────────────────────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────────────────
 export { db };
 
 (async () => {

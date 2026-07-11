@@ -1,76 +1,99 @@
-<div class="page-header reports-header">
-  <h2 class="page-title">Reports</h2>
-  <select id="reportsPeriod" class="reports-period-select" aria-label="Report period">
-    <option value="3">Last 3 months</option>
-    <option value="6" selected>Last 6 months</option>
-    <option value="12">Last 12 months</option>
-  </select>
-</div>
+<section class="page hidden" id="reports" aria-hidden="true">
 
-<div id="reportsContent">
-
-  <!-- KPI Row -->
-  <div class="reports-kpi-row">
-    <div class="reports-kpi-card">
-      <span class="reports-kpi-label">Total Income</span>
-      <span id="reportsKpiIncome" class="reports-kpi-value">—</span>
-    </div>
-    <div class="reports-kpi-card">
-      <span class="reports-kpi-label">Total Expenses</span>
-      <span id="reportsKpiExpense" class="reports-kpi-value">—</span>
-    </div>
-    <div class="reports-kpi-card">
-      <span class="reports-kpi-label">Net Savings</span>
-      <span id="reportsKpiNet" class="reports-kpi-value">—</span>
-    </div>
-    <div class="reports-kpi-card">
-      <span class="reports-kpi-label">Savings Rate</span>
-      <span id="reportsKpiRate" class="reports-kpi-value">—</span>
+  <!-- Page header -->
+  <div class="rpt-page-header-bar">
+    <h2 class="page-title">Reports</h2>
+    <div class="rpt-header-controls">
+      <select id="rptPeriodType" class="rpt-select" title="Period type">
+        <option value="month">Monthly</option>
+        <option value="year">Yearly</option>
+      </select>
+      <input id="rptMonth" class="rpt-select" type="month" title="Select month" />
+      <select id="rptYear" class="rpt-select rpt-hidden" title="Select year"></select>
     </div>
   </div>
 
-  <!-- Charts Grid -->
-  <div class="reports-charts-grid">
+  <!-- KPI summary strip -->
+  <div class="rpt-kpi-strip" aria-live="polite">
+    <div class="rpt-kpi-card rpt-kpi--income">
+      <span class="rpt-kpi-label">Income</span>
+      <span id="rptKpiIncome" class="rpt-kpi-value">&#8212;</span>
+    </div>
+    <div class="rpt-kpi-card rpt-kpi--expense">
+      <span class="rpt-kpi-label">Expenses</span>
+      <span id="rptKpiExpense" class="rpt-kpi-value">&#8212;</span>
+    </div>
+    <div class="rpt-kpi-card rpt-kpi--net">
+      <span class="rpt-kpi-label">Net Cash Flow</span>
+      <span id="rptKpiNet" class="rpt-kpi-value">&#8212;</span>
+    </div>
+    <div class="rpt-kpi-card rpt-kpi--txns">
+      <span class="rpt-kpi-label">Transactions</span>
+      <span id="rptKpiTxns" class="rpt-kpi-value">&#8212;</span>
+    </div>
+  </div>
 
-    <div class="reports-chart-card">
-      <div class="reports-chart-title">Income vs Expenses</div>
-      <div class="reports-chart-wrap">
-        <canvas id="reportsBarChart" aria-label="Income vs Expenses bar chart"></canvas>
+  <!-- Charts row -->
+  <div class="rpt-charts-row">
+
+    <!-- Spending by Category (donut) -->
+    <div class="card rpt-chart-card">
+      <h3 class="rpt-chart-title">Spending by Category</h3>
+      <div class="rpt-chart-wrap">
+        <canvas id="rptCategoryChart" aria-label="Spending by category chart"></canvas>
       </div>
+      <div id="rptCategoryLegend" class="rpt-legend"></div>
     </div>
 
-    <div class="reports-chart-card">
-      <div class="reports-chart-title">Monthly Net Savings</div>
-      <div class="reports-chart-wrap">
-        <canvas id="reportsLineChart" aria-label="Monthly net savings line chart"></canvas>
-      </div>
-    </div>
-
-    <div class="reports-chart-card">
-      <div class="reports-chart-title">Spending by Category</div>
-      <div class="reports-chart-wrap reports-chart-wrap--tall" style="position:relative">
-        <canvas id="reportsDoughnutChart" aria-label="Spending by category doughnut chart"></canvas>
-        <p id="reportsDoughnutNoData" class="hidden reports-empty-row">No categorised expenses in this period.</p>
+    <!-- Income vs Expenses (bar) -->
+    <div class="card rpt-chart-card">
+      <h3 class="rpt-chart-title">Income vs Expenses</h3>
+      <div class="rpt-chart-wrap">
+        <canvas id="rptIncomeExpenseChart" aria-label="Income vs expenses chart"></canvas>
       </div>
     </div>
 
   </div>
 
-  <!-- Category Breakdown Table -->
-  <div class="reports-cat-section">
-    <h3>Top Spending Categories</h3>
-    <table class="reports-cat-table" aria-label="Top spending categories">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th style="text-align:right">Amount</th>
-          <th style="text-align:right">% of Expenses</th>
-        </tr>
-      </thead>
-      <tbody id="reportsCatTableBody">
-        <tr><td colspan="3" class="reports-empty-row">Loading…</td></tr>
-      </tbody>
-    </table>
+  <!-- Budget vs Actual table -->
+  <div class="card rpt-table-card">
+    <h3 class="rpt-chart-title">Budget vs Actual</h3>
+    <div class="rpt-bva-wrap">
+      <table class="rpt-bva-table" aria-label="Budget vs actual">
+        <thead>
+          <tr>
+            <th scope="col">Category</th>
+            <th scope="col" class="rpt-num-col">Budget</th>
+            <th scope="col" class="rpt-num-col">Actual</th>
+            <th scope="col" class="rpt-num-col">Remaining</th>
+            <th scope="col" class="rpt-progress-col">Progress</th>
+          </tr>
+        </thead>
+        <tbody id="rptBvaBody" aria-live="polite">
+          <tr><td colspan="5" class="rpt-loading">Loading&#8230;</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-</div>
+  <!-- Top spending table -->
+  <div class="card rpt-table-card">
+    <h3 class="rpt-chart-title">Top Transactions</h3>
+    <div class="rpt-bva-wrap">
+      <table class="rpt-bva-table" aria-label="Top transactions">
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Description</th>
+            <th scope="col" class="rpt-hide-mobile">Category</th>
+            <th scope="col" class="rpt-num-col">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="rptTopTxnBody" aria-live="polite">
+          <tr><td colspan="4" class="rpt-loading">Loading&#8230;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</section>

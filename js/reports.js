@@ -1,21 +1,18 @@
 /**
  * reports.js — Reports page
  *
- * Displays:
- *   1. Period selector (last 3 / 6 / 12 months)
- *   2. KPI summary row (total income, total expenses, net savings, savings rate)
- *   3. Income vs Expense bar chart (monthly)
- *   4. Spending by Category doughnut chart
- *   5. Monthly Net Savings line chart
- *   6. Top-categories breakdown table
- *
  * Exports:
- *   initReportsPage(uid)
+ *   initReportsPage() — wires up the #reports page UI
+ *
+ * Reads from root-level shared collections:
+ *   transactions  — date (Timestamp), amountCents, type, categoryId, payee, isActive
+ *   budgets       — period (YYYY-MM), categoryId, amountCents, type, isActive
+ *   categories    — id, name
  */
 
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, query, where
+  getFirestore, collection, getDocs, query, where, orderBy, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getCategoriesMap } from "./categories.js";
 
@@ -25,338 +22,387 @@ function getDb() {
   return _db;
 }
 
-function getDateValue(val) {
-  if (!val) return null;
-  if (val.toDate) return val.toDate();
-  const d = new Date(val);
-  return isNaN(d) ? null : d;
+// ── Chart instances (kept so we can destroy before re-render) ──────────────
+let _categoryChart = null;
+let _incomeExpenseChart = null;
+
+// ── Chart.js palette ───────────────────────────────────────────────────────
+const PALETTE = [
+  "#0f766e","#2563eb","#7c3aed","#db2777","#ea580c",
+  "#ca8a04","#16a34a","#0891b2","#9333ea","#be185d",
+  "#65a30d","#0284c7","#c2410c","#15803d","#1d4ed8"
+];
+
+function esc(str) {
+  return String(str ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-function fmt(cents) {
-  return "$" + (Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function formatCents(cents) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
-function monthLabel(year, month) {
-  return new Date(year, month, 1).toLocaleString("en-US", { month: "short", year: "2-digit" });
+function formatDate(val) {
+  if (!val) return "";
+  const d = val.toDate ? val.toDate() : new Date(val);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// Returns CSS variable value from :root
-function cssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
-
-let _chartInstances = {};
-
-function destroyChart(key) {
-  if (_chartInstances[key]) {
-    _chartInstances[key].destroy();
-    delete _chartInstances[key];
-  }
-}
-
-export async function initReportsPage(uid) {
-  const page = document.getElementById("reports");
-  if (!page) return;
-
-  // ── Period selector ────────────────────────────────────────────────
-  const periodSelect = page.querySelector("#reportsPeriod");
-  if (!periodSelect) return;
-
-  periodSelect.addEventListener("change", () => loadAndRender(uid));
-  await loadAndRender(uid);
-}
-
-async function loadAndRender(uid) {
-  const page = document.getElementById("reports");
-  const periodSelect = page.querySelector("#reportsPeriod");
-  const months = parseInt(periodSelect?.value ?? "6", 10);
-
-  // Date range: beginning of (months) ago → now
+// ── Period helpers ─────────────────────────────────────────────────────────
+function currentYYYYMM() {
   const now = new Date();
-  const startDate = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
 
-  // Show loading state
-  page.querySelector("#reportsContent")?.classList.add("reports-loading");
+function monthToRange(yyyymm) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  const start = new Date(y, m - 1, 1);
+  const end   = new Date(y, m, 1);
+  return { start, end };
+}
 
-  try {
-    // Load accounts to get all account IDs
-    const accountSnap = await getDocs(collection(getDb(), "accounts"));
-    const allAccountIds = accountSnap.docs.map(d => d.id);
+function yearToRange(year) {
+  const start = new Date(year, 0, 1);
+  const end   = new Date(year + 1, 0, 1);
+  return { start, end };
+}
 
-    if (allAccountIds.length === 0) {
-      renderEmpty(page, "No accounts found. Add an account to see reports.");
-      return;
-    }
+function last12Months() {
+  const months = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return months;
+}
 
-    // Load transactions within date range
-    const txnCol = collection(getDb(), "transactions");
-    const IN_LIMIT = 30;
-    const allTxns = [];
+// ── Firestore fetchers ─────────────────────────────────────────────────────
+async function fetchTransactionsInRange(start, end) {
+  const q = query(
+    collection(getDb(), "transactions"),
+    where("date", ">=", Timestamp.fromDate(start)),
+    where("date", "<",  Timestamp.fromDate(end)),
+    orderBy("date", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
-    for (let i = 0; i < allAccountIds.length; i += IN_LIMIT) {
-      const chunk = allAccountIds.slice(i, i + IN_LIMIT);
-      const q = query(txnCol, where("accountId", "in", chunk));
-      const snap = await getDocs(q);
-      snap.docs.forEach(d => {
-        const t = { id: d.id, ...d.data() };
-        const dt = getDateValue(t.date);
-        if (dt && dt >= startDate) allTxns.push({ ...t, _date: dt });
-      });
-    }
+async function fetchBudgetsForPeriod(period) {
+  const q = query(
+    collection(getDb(), "budgets"),
+    where("period", "==", period),
+    where("isActive", "==", true)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
-    const catMap = await getCategoriesMap(uid);
+// ── Chart helpers ──────────────────────────────────────────────────────────
+function destroyCharts() {
+  if (_categoryChart)      { _categoryChart.destroy();      _categoryChart = null; }
+  if (_incomeExpenseChart) { _incomeExpenseChart.destroy(); _incomeExpenseChart = null; }
+}
 
-    // Build month buckets
-    const buckets = {}; // "YYYY-MM" -> { income: cents, expense: cents }
-    for (let m = 0; m < months; m++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - (months - 1) + m, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      buckets[key] = { income: 0, expense: 0, label: monthLabel(d.getFullYear(), d.getMonth()) };
-    }
+function isDark() {
+  return document.documentElement.getAttribute("data-theme") === "dark";
+}
+function chartTextColor()  { return isDark() ? "#a8b5c2" : "#5e6a77"; }
+function chartGridColor()  { return isDark() ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"; }
 
-    // Category spending map
-    const catSpend = {}; // categoryId -> cents
-    let totalIncome = 0, totalExpense = 0;
+// ── KPI strip ──────────────────────────────────────────────────────────────
+function renderKPIs(txns) {
+  let income = 0, expense = 0;
+  txns.forEach(t => {
+    if (t.type === "income")  income  += (t.amountCents ?? 0);
+    if (t.type === "expense") expense += (t.amountCents ?? 0);
+  });
+  const net = income - expense;
 
-    allTxns.forEach(t => {
-      const dt = t._date;
-      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-      const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
-      if (buckets[key]) {
-        if (t.type === "income") { buckets[key].income += cents; totalIncome += cents; }
-        else                    { buckets[key].expense += cents; totalExpense += cents; }
-      }
-      if (t.type !== "income" && t.categoryId) {
-        catSpend[t.categoryId] = (catSpend[t.categoryId] ?? 0) + cents;
-      }
-    });
+  document.getElementById("rptKpiIncome").textContent  = formatCents(income);
+  document.getElementById("rptKpiExpense").textContent = formatCents(expense);
+  document.getElementById("rptKpiTxns").textContent    = txns.length.toLocaleString();
 
-    const netSavings = totalIncome - totalExpense;
-    const savingsRate = totalIncome > 0 ? Math.round((netSavings / totalIncome) * 100) : 0;
+  const netEl = document.getElementById("rptKpiNet");
+  netEl.textContent = formatCents(net);
+  netEl.className = "rpt-kpi-value " + (net >= 0 ? "rpt-kpi-value--positive" : "rpt-kpi-value--negative");
+}
 
-    // ── KPI Cards ─────────────────────────────────────────────────────
-    const kpiIncome  = page.querySelector("#reportsKpiIncome");
-    const kpiExpense = page.querySelector("#reportsKpiExpense");
-    const kpiNet     = page.querySelector("#reportsKpiNet");
-    const kpiRate    = page.querySelector("#reportsKpiRate");
+// ── Donut chart — spending by category ────────────────────────────────────
+function renderCategoryChart(txns, catMap) {
+  const expenses = txns.filter(t => t.type === "expense");
+  const totals = {};
+  expenses.forEach(t => {
+    const name = catMap[t.categoryId] ?? "Uncategorized";
+    totals[name] = (totals[name] ?? 0) + (t.amountCents ?? 0);
+  });
 
-    if (kpiIncome)  kpiIncome.textContent  = fmt(totalIncome);
-    if (kpiExpense) kpiExpense.textContent = fmt(totalExpense);
-    if (kpiNet) {
-      kpiNet.textContent = (netSavings < 0 ? "-" : "+") + fmt(netSavings);
-      kpiNet.className = "reports-kpi-value " + (netSavings >= 0 ? "positive" : "negative");
-    }
-    if (kpiRate) {
-      kpiRate.textContent = savingsRate + "%";
-      kpiRate.className = "reports-kpi-value " + (savingsRate >= 0 ? "positive" : "negative");
-    }
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(([k]) => k);
+  const data   = sorted.map(([, v]) => v / 100);
+  const colors = labels.map((_, i) => PALETTE[i % PALETTE.length]);
 
-    // ── Chart colours ─────────────────────────────────────────────────
-    const colorIncome  = cssVar("--color-success")  || "#6daa45";
-    const colorExpense = cssVar("--color-notification") || "#a13544";
-    const colorPrimary = cssVar("--color-primary")  || "#01696f";
-    const colorMuted   = cssVar("--color-text-muted") || "#7a7974";
-    const colorSurface = cssVar("--color-surface-2") || "#fbfbf9";
-    const colorBorder  = cssVar("--color-border")   || "#d4d1ca";
-    const colorText    = cssVar("--color-text")      || "#28251d";
-
-    const CAT_PALETTE = [
-      cssVar("--color-primary")  || "#01696f",
-      cssVar("--color-orange")   || "#da7101",
-      cssVar("--color-blue")     || "#006494",
-      cssVar("--color-purple")   || "#7a39bb",
-      cssVar("--color-gold")     || "#d19900",
-      cssVar("--color-error")    || "#a12c7b",
-      cssVar("--color-success")  || "#437a22",
-      cssVar("--color-warning")  || "#964219",
-      cssVar("--color-notification") || "#a13544",
-      colorMuted,
-    ];
-
-    const orderedKeys = Object.keys(buckets).sort();
-    const labels = orderedKeys.map(k => buckets[k].label);
-    const incomeData  = orderedKeys.map(k => buckets[k].income  / 100);
-    const expenseData = orderedKeys.map(k => buckets[k].expense / 100);
-    const netData     = orderedKeys.map(k => (buckets[k].income - buckets[k].expense) / 100);
-
-    const chartDefaults = {
+  const ctx = document.getElementById("rptCategoryChart").getContext("2d");
+  _categoryChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: isDark() ? "#1a232d" : "#fff"
+      }]
+    },
+    options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: colorText, font: { family: "Inter, sans-serif", size: 12 } } },
+        legend: { display: false },
         tooltip: {
-          backgroundColor: colorSurface,
-          titleColor: colorText,
-          bodyColor: colorMuted,
-          borderColor: colorBorder,
-          borderWidth: 1,
           callbacks: {
-            label: ctx => " $" + Number(ctx.parsed.y ?? ctx.parsed).toLocaleString("en-US", { minimumFractionDigits: 2 })
+            label: ctx => ` ${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(ctx.parsed)}`
+          }
+        }
+      }
+    }
+  });
+
+  const legend = document.getElementById("rptCategoryLegend");
+  if (labels.length === 0) {
+    legend.innerHTML = `<span class="rpt-empty">No expense data for this period.</span>`;
+    return;
+  }
+  legend.innerHTML = labels.slice(0, 10).map((lbl, i) =>
+    `<span class="rpt-legend-item"><span class="rpt-legend-dot" style="background:${colors[i]}"></span>${esc(lbl)}</span>`
+  ).join("");
+}
+
+// ── Bar chart — income vs expenses trend ───────────────────────────────────
+function renderIncomeExpenseChart(allTxns, periodType, selectedValue) {
+  let periods;
+  if (periodType === "year") {
+    periods = last12Months().filter(m => m.startsWith(selectedValue));
+    if (periods.length === 0) periods = [`${selectedValue}-01`];
+  } else {
+    const [y, mo] = selectedValue.split("-").map(Number);
+    periods = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(y, mo - 1 - i, 1);
+      periods.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+  }
+
+  const incomeByMonth  = {};
+  const expenseByMonth = {};
+  periods.forEach(p => { incomeByMonth[p] = 0; expenseByMonth[p] = 0; });
+
+  allTxns.forEach(t => {
+    const d = t.date?.toDate ? t.date.toDate() : new Date(t.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!(key in incomeByMonth)) return;
+    if (t.type === "income")  incomeByMonth[key]  += (t.amountCents ?? 0) / 100;
+    if (t.type === "expense") expenseByMonth[key] += (t.amountCents ?? 0) / 100;
+  });
+
+  const labels = periods.map(p => {
+    const [yr, mo] = p.split("-").map(Number);
+    return new Date(yr, mo - 1, 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+  });
+
+  const tc = chartTextColor();
+  const gc = chartGridColor();
+  const ctx = document.getElementById("rptIncomeExpenseChart").getContext("2d");
+
+  _incomeExpenseChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Income",   data: periods.map(p => incomeByMonth[p]),  backgroundColor: "#16a34a", borderRadius: 4 },
+        { label: "Expenses", data: periods.map(p => expenseByMonth[p]), backgroundColor: "#dc2626", borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: tc, font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(ctx.parsed.y)}`
           }
         }
       },
       scales: {
-        x: { ticks: { color: colorMuted }, grid: { color: colorBorder + "44" } },
+        x: { ticks: { color: tc }, grid: { color: gc } },
         y: {
           ticks: {
-            color: colorMuted,
-            callback: v => "$" + Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 })
+            color: tc,
+            callback: v => "$" + (v >= 1000 ? (v / 1000).toFixed(1) + "k" : v)
           },
-          grid: { color: colorBorder + "44" }
+          grid: { color: gc }
         }
       }
-    };
-
-    // ── 1. Income vs Expense Bar Chart ────────────────────────────────
-    destroyChart("bar");
-    const barCtx = page.querySelector("#reportsBarChart")?.getContext("2d");
-    if (barCtx) {
-      _chartInstances["bar"] = new Chart(barCtx, {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [
-            { label: "Income",  data: incomeData,  backgroundColor: colorIncome  + "cc", borderColor: colorIncome,  borderWidth: 1.5, borderRadius: 4 },
-            { label: "Expense", data: expenseData, backgroundColor: colorExpense + "cc", borderColor: colorExpense, borderWidth: 1.5, borderRadius: 4 }
-          ]
-        },
-        options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: "top" } } }
-      });
     }
+  });
+}
 
-    // ── 2. Net Savings Line Chart ─────────────────────────────────────
-    destroyChart("line");
-    const lineCtx = page.querySelector("#reportsLineChart")?.getContext("2d");
-    if (lineCtx) {
-      _chartInstances["line"] = new Chart(lineCtx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "Net Savings",
-            data: netData,
-            borderColor: colorPrimary,
-            backgroundColor: colorPrimary + "22",
-            borderWidth: 2.5,
-            pointBackgroundColor: colorPrimary,
-            pointRadius: 4,
-            tension: 0.35,
-            fill: true
-          }]
-        },
-        options: {
-          ...chartDefaults,
-          plugins: {
-            ...chartDefaults.plugins,
-            tooltip: {
-              ...chartDefaults.plugins.tooltip,
-              callbacks: {
-                label: ctx => {
-                  const v = ctx.parsed.y;
-                  return " " + (v < 0 ? "-" : "+") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2 });
-                }
-              }
-            }
-          }
-        }
-      });
-    }
+// ── Budget vs Actual table ─────────────────────────────────────────────────
+function renderBudgetVsActual(txns, budgets, catMap) {
+  const tbody = document.getElementById("rptBvaBody");
+  const actualByCategory = {};
+  txns.filter(t => t.type === "expense").forEach(t => {
+    actualByCategory[t.categoryId] = (actualByCategory[t.categoryId] ?? 0) + (t.amountCents ?? 0);
+  });
 
-    // ── 3. Category Doughnut Chart ────────────────────────────────────
-    destroyChart("doughnut");
-    const donutCtx = page.querySelector("#reportsDoughnutChart")?.getContext("2d");
-    const sortedCats = Object.entries(catSpend)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
+  const expenseBudgets = budgets.filter(b => b.type === "expense");
+  if (expenseBudgets.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="rpt-empty">No expense budgets set for this period.</td></tr>`;
+    return;
+  }
 
-    if (donutCtx && sortedCats.length > 0) {
-      const donutLabels = sortedCats.map(([id]) => {
-        const c = catMap[id];
-        return c ? (c.emoji ? `${c.emoji} ${c.name}` : c.name) : id;
-      });
-      const donutData = sortedCats.map(([, cents]) => cents / 100);
+  const rows = expenseBudgets
+    .map(b => ({
+      name:   catMap[b.categoryId] ?? b.categoryName ?? "Unknown",
+      budget: b.amountCents ?? 0,
+      actual: actualByCategory[b.categoryId] ?? 0
+    }))
+    .sort((a, b) => b.actual - a.actual);
 
-      _chartInstances["doughnut"] = new Chart(donutCtx, {
-        type: "doughnut",
-        data: {
-          labels: donutLabels,
-          datasets: [{
-            data: donutData,
-            backgroundColor: CAT_PALETTE.map(c => c + "cc"),
-            borderColor: CAT_PALETTE,
-            borderWidth: 1.5,
-            hoverOffset: 8
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "60%",
-          plugins: {
-            legend: { position: "right", labels: { color: colorText, font: { family: "Inter, sans-serif", size: 12 }, boxWidth: 14, padding: 12 } },
-            tooltip: {
-              backgroundColor: colorSurface,
-              titleColor: colorText,
-              bodyColor: colorMuted,
-              borderColor: colorBorder,
-              borderWidth: 1,
-              callbacks: {
-                label: ctx => {
-                  const v = ctx.parsed;
-                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                  const pct = total > 0 ? Math.round((v / total) * 100) : 0;
-                  return ` $${v.toLocaleString("en-US", { minimumFractionDigits: 2 })} (${pct}%)`;
-                }
-              }
-            }
-          }
-        }
-      });
-    } else if (donutCtx) {
-      // No categorised expenses
-      const noDataEl = page.querySelector("#reportsDoughnutNoData");
-      if (noDataEl) noDataEl.classList.remove("hidden");
-    }
+  tbody.innerHTML = rows.map(r => {
+    const remaining = r.budget - r.actual;
+    const pct = r.budget > 0 ? Math.min((r.actual / r.budget) * 100, 100) : 0;
+    const over = r.actual > r.budget;
+    const warn = !over && pct >= 80;
+    const barClass = over ? "rpt-progress-bar--over" : warn ? "rpt-progress-bar--warn" : "rpt-progress-bar--ok";
+    const remClass = remaining >= 0 ? "rpt-amount--positive" : "rpt-amount--negative";
+    return `<tr>
+      <td>${esc(r.name)}</td>
+      <td class="rpt-num-col">${formatCents(r.budget)}</td>
+      <td class="rpt-num-col">${formatCents(r.actual)}</td>
+      <td class="rpt-num-col ${remClass}">${formatCents(Math.abs(remaining))} ${remaining < 0 ? "over" : "left"}</td>
+      <td class="rpt-progress-col">
+        <div class="rpt-progress-bar-wrap">
+          <div class="rpt-progress-bar ${barClass}" style="width:${pct.toFixed(1)}%"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
 
-    // ── 4. Top Categories Table ───────────────────────────────────────
-    const tbody = page.querySelector("#reportsCatTableBody");
-    if (tbody) {
-      if (sortedCats.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" class="reports-empty-row">No categorised expenses in this period.</td></tr>`;
-      } else {
-        const totalExpCents = sortedCats.reduce((s, [, c]) => s + c, 0);
-        tbody.innerHTML = sortedCats.map(([id, cents], i) => {
-          const c   = catMap[id];
-          const lbl = c ? (c.emoji ? `${c.emoji} ${c.name}` : c.name) : "Uncategorised";
-          const pct = totalExpCents > 0 ? Math.round((cents / totalExpCents) * 100) : 0;
-          const color = CAT_PALETTE[i % CAT_PALETTE.length];
-          return `
-            <tr>
-              <td>
-                <span class="reports-cat-dot" style="background:${color}"></span>
-                ${lbl}
-              </td>
-              <td class="reports-cat-amount">${fmt(cents)}</td>
-              <td class="reports-cat-pct">
-                <div class="reports-cat-bar-wrap">
-                  <div class="reports-cat-bar" style="width:${pct}%;background:${color}"></div>
-                </div>
-                ${pct}%
-              </td>
-            </tr>`;
-        }).join("");
-      }
-    }
+// ── Top transactions table ─────────────────────────────────────────────────
+function renderTopTransactions(txns, catMap) {
+  const tbody = document.getElementById("rptTopTxnBody");
+  const top = [...txns]
+    .filter(t => t.type === "expense")
+    .sort((a, b) => (b.amountCents ?? 0) - (a.amountCents ?? 0))
+    .slice(0, 15);
 
-  } catch (err) {
-    console.error("[reports] loadAndRender error:", err);
-    renderEmpty(page, "Error loading report data. Please try again.");
-  } finally {
-    page.querySelector("#reportsContent")?.classList.remove("reports-loading");
+  if (top.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="rpt-empty">No transactions for this period.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = top.map(t => {
+    const cat = catMap[t.categoryId] ?? "Uncategorized";
+    return `<tr>
+      <td>${esc(formatDate(t.date))}</td>
+      <td>${esc(t.payee ?? "")}</td>
+      <td class="rpt-hide-mobile">${esc(cat)}</td>
+      <td class="rpt-num-col rpt-amount--negative">${formatCents(t.amountCents ?? 0)}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Main render ────────────────────────────────────────────────────────────
+async function renderReports() {
+  const periodType = document.getElementById("rptPeriodType")?.value ?? "month";
+  const monthInput = document.getElementById("rptMonth");
+  const yearSelect = document.getElementById("rptYear");
+
+  let start, end, budgetPeriod;
+  if (periodType === "month") {
+    const yyyymm = monthInput.value || currentYYYYMM();
+    ({ start, end } = monthToRange(yyyymm));
+    budgetPeriod = yyyymm;
+  } else {
+    const year = parseInt(yearSelect.value || new Date().getFullYear(), 10);
+    ({ start, end } = yearToRange(year));
+    budgetPeriod = null;
+  }
+
+  // Loading state
+  document.getElementById("rptBvaBody").innerHTML    = `<tr><td colspan="5" class="rpt-loading">Loading&#8230;</td></tr>`;
+  document.getElementById("rptTopTxnBody").innerHTML  = `<tr><td colspan="4" class="rpt-loading">Loading&#8230;</td></tr>`;
+  ["rptKpiIncome","rptKpiExpense","rptKpiNet","rptKpiTxns"].forEach(id => {
+    document.getElementById(id).textContent = "\u2014";
+  });
+  document.getElementById("rptCategoryLegend").innerHTML = "";
+  destroyCharts();
+
+  // Fetch a wider window for the trend chart (last 6 months)
+  const trendStart = new Date(start);
+  trendStart.setMonth(trendStart.getMonth() - 5);
+
+  const [txns, trendTxns, budgets, catMap] = await Promise.all([
+    fetchTransactionsInRange(start, end),
+    periodType === "month"
+      ? fetchTransactionsInRange(trendStart, end)
+      : fetchTransactionsInRange(start, end),
+    budgetPeriod ? fetchBudgetsForPeriod(budgetPeriod) : Promise.resolve([]),
+    getCategoriesMap()
+  ]);
+
+  const selectedValue = periodType === "month"
+    ? (monthInput.value || currentYYYYMM())
+    : String(yearSelect.value || new Date().getFullYear());
+
+  renderKPIs(txns);
+  renderCategoryChart(txns, catMap);
+  renderIncomeExpenseChart(trendTxns, periodType, selectedValue);
+  renderBudgetVsActual(txns, budgets, catMap);
+  renderTopTransactions(txns, catMap);
+}
+
+// ── Page init ──────────────────────────────────────────────────────────────
+export function initReportsPage() {
+  if (typeof Chart === "undefined") {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js";
+    script.onload = () => _initControls();
+    document.head.appendChild(script);
+  } else {
+    _initControls();
   }
 }
 
-function renderEmpty(page, msg) {
-  const content = page.querySelector("#reportsContent");
-  if (content) content.innerHTML = `<div class="reports-empty"><p>${msg}</p></div>`;
+function _initControls() {
+  const periodType = document.getElementById("rptPeriodType");
+  const monthInput = document.getElementById("rptMonth");
+  const yearSelect = document.getElementById("rptYear");
+
+  if (monthInput && !monthInput.value) monthInput.value = currentYYYYMM();
+
+  if (yearSelect && yearSelect.children.length <= 1) {
+    const thisYear = new Date().getFullYear();
+    for (let y = thisYear; y >= thisYear - 4; y--) {
+      const opt = document.createElement("option");
+      opt.value = y;
+      opt.textContent = y;
+      yearSelect.appendChild(opt);
+    }
+  }
+
+  periodType?.addEventListener("change", () => {
+    const isYear = periodType.value === "year";
+    monthInput?.classList.toggle("rpt-hidden", isYear);
+    yearSelect?.classList.toggle("rpt-hidden", !isYear);
+    renderReports();
+  });
+
+  monthInput?.addEventListener("change", renderReports);
+  yearSelect?.addEventListener("change", renderReports);
+
+  renderReports();
 }
