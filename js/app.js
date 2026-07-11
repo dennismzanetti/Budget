@@ -93,6 +93,9 @@ function updateUI(user) {
   // Init categories so the list is ready when the user navigates there.
   initCategoriesPage(user.uid);
 
+  // Preload transactions so the list is ready when the user navigates there.
+  initTransactionsPage(user.uid);
+
   // Init import page so the account dropdown is ready when the user navigates there.
   initImportPage();
 
