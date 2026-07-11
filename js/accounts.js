@@ -55,6 +55,19 @@ async function fetchAccounts() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// ── Nav badge ─────────────────────────────────────────────────────────
+function updateAccountsBadge(accounts) {
+  const badge = document.getElementById("accounts-count-badge");
+  if (!badge) return;
+  if (!accounts || accounts.length === 0) {
+    badge.textContent = "";
+    return;
+  }
+  const active = accounts.filter(a => a.isActive !== false).length;
+  const total  = accounts.length;
+  badge.textContent = active === total ? `(${total})` : `${active} (${total})`;
+}
+
 // ── Seed ──────────────────────────────────────────────────────────────
 export async function seedAccountsIfEmpty(_uid) {
   try {
@@ -211,6 +224,8 @@ export async function initAccountsPage(_uid) {
     listEl.innerHTML = '<li class="accounts-loading">Loading\u2026</li>';
     try {
       const accounts = await fetchAccounts();
+      updateAccountsBadge(accounts);
+
       if (accounts.length === 0) {
         listEl.innerHTML = `
           <li class="accounts-empty">
