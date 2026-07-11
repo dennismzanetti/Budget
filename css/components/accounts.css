@@ -92,6 +92,19 @@
   justify-content: flex-start;
   padding: 0;
   cursor: pointer;
+  user-select: none;
+  transition: background 0.12s, box-shadow 0.12s;
+}
+
+.account-card--expandable:hover {
+  background: var(--surface-2, #f3f3f3);
+  box-shadow: var(--shadow-sm);
+}
+
+.account-card--expandable[aria-expanded="true"] {
+  background: var(--surface-2, #f3f3f3);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 /* The horizontal header row inside an expandable card */
@@ -110,6 +123,7 @@
   padding: 0.5rem 1rem 0.75rem;
   background: var(--surface-2);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  animation: cat-expand 0.18s ease;
 }
 
 .account-card__tx-panel[hidden] {
@@ -436,6 +450,78 @@ html[data-theme="dark"] .account-delete-confirm-btn:hover {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text);
+}
+
+/* ── Account card transaction list (mirrors categories styling) ───────── */
+
+/* Wrapper div injected by buildCardTxList */
+.cat-card-tx__list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each transaction row */
+.cat-breakdown__tx-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+  list-style: none;
+}
+
+.cat-breakdown__tx-list-row:last-child {
+  border-bottom: none;
+}
+
+/* Date cell */
+.cat-card-tx__date {
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+/* Description / payee cell (alias used by accounts buildCardTxList) */
+.cat-card-tx__desc {
+  flex: 1;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Amount cell */
+.cat-card-tx__amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cat-card-tx__amount--income {
+  color: #437a22;
+}
+html[data-theme="dark"] .cat-card-tx__amount--income {
+  color: #6daa45;
+}
+
+.cat-card-tx__amount--expense {
+  color: #a13544;
+}
+html[data-theme="dark"] .cat-card-tx__amount--expense {
+  color: #dd6974;
+}
+
+/* Loading and empty state inside the panel */
+.cat-card-tx__loading,
+.cat-card-tx__empty {
+  padding: 0.75rem 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: center;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
