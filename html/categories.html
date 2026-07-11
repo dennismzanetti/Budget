@@ -92,17 +92,4 @@
   </div>
 
   <ul id="categoriesList" class="accounts-list" aria-live="polite"></ul>
-
-  <script>
-    (function () {
-      var btn = document.getElementById('catBreakdownToggle');
-      var panel = document.getElementById('catBreakdownCharts');
-      if (!btn || !panel) return;
-      btn.addEventListener('click', function () {
-        var expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        panel.classList.toggle('is-collapsed', expanded);
-      });
-    })();
-  </script>
 </section>

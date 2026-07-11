@@ -1115,5 +1115,16 @@ export async function initCategoriesPage(_uid) {
     }
   });
 
+  // ── Charts section collapsible toggle ─────────────────────────────
+  const toggleBtn   = document.getElementById('catBreakdownToggle');
+  const chartsPanel = document.getElementById('catBreakdownCharts');
+  if (toggleBtn && chartsPanel) {
+    toggleBtn.addEventListener('click', () => {
+      const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+      toggleBtn.setAttribute('aria-expanded', String(!expanded));
+      chartsPanel.classList.toggle('is-collapsed', expanded);
+    });
+  }
+
   await refreshBreakdown();
 }
