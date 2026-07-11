@@ -1,4 +1,280 @@
-<section class="page hidden" id="budget" aria-hidden="true">
-  <h2 class="page-title">Budget</h2>
-  <div class="card"><p class="subtle">Budget planning coming soon.</p></div>
-</section>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Budgets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="../css/style.css">
+
+  <script type="module">
+    import {
+      buildBudgetEditorRows,
+      saveBudget,
+      buildBudgetActuals,
+      copyBudgets,
+      initBudgetsPage
+    } from "../js/budgets.js";
+
+    import { formatCents } from "../js/transactions.js";
+
+    let currentPeriod = null;
+    let editorRows = [];
+
+    function getPeriodFromInput() {
+      const input = document.getElementById("budget-period");
+      const value = input.value;
+      if (!value) return null;
+      return value;
+    }
+
+    async function loadEditorForCurrentPeriod() {
+      const period = getPeriodFromInput();
+      if (!period) return;
+
+      currentPeriod = period;
+      const tbody = document.getElementById("budget-editor-tbody");
+      tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+
+      try {
+        editorRows = await buildBudgetEditorRows(period);
+        tbody.innerHTML = "";
+
+        editorRows.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.dataset.categoryId = row.categoryId;
+
+          tr.innerHTML = `
+            <td class="category-cell">
+              <span class="category-emoji">${row.categoryEmoji || ""}</span>
+              <span class="category-name">${row.categoryName}</span>
+            </td>
+            <td>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="budget-input"
+                data-type="expense"
+                value="${(row.expenseAmountCents || 0) / 100}"
+              >
+            </td>
+            <td>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="budget-input"
+                data-type="income"
+                value="${(row.incomeAmountCents || 0) / 100}"
+              >
+            </td>
+            <td>
+              <button class="budget-save-button">Save</button>
+            </td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("[budgets] loadEditorForCurrentPeriod error", err);
+        tbody.innerHTML = `<tr><td colspan="4">Error loading budgets: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function handleSaveClick(event) {
+      const button = event.target;
+      if (!button.classList.contains("budget-save-button")) return;
+
+      const tr = button.closest("tr");
+      const categoryId = tr.dataset.categoryId;
+      const categoryName = tr.querySelector(".category-name").textContent;
+
+      const expenseInput = tr.querySelector('input[data-type="expense"]');
+      const incomeInput = tr.querySelector('input[data-type="income"]');
+
+      const expenseAmountDollars = parseFloat(expenseInput.value || "0");
+      const incomeAmountDollars = parseFloat(incomeInput.value || "0");
+
+      const expenseAmountCents = Math.round((expenseAmountDollars || 0) * 100);
+      const incomeAmountCents = Math.round((incomeAmountDollars || 0) * 100);
+
+      try {
+        if (expenseAmountCents >= 0) {
+          await saveBudget({
+            categoryId,
+            categoryName,
+            period: currentPeriod,
+            amountCents: expenseAmountCents,
+            type: "expense"
+          });
+        }
+
+        if (incomeAmountCents >= 0) {
+          await saveBudget({
+            categoryId,
+            categoryName,
+            period: currentPeriod,
+            amountCents: incomeAmountCents,
+            type: "income"
+          });
+        }
+
+        button.textContent = "Saved";
+        setTimeout(() => {
+          button.textContent = "Save";
+        }, 1500);
+      } catch (err) {
+        console.error("[budgets] saveBudget error", err);
+        button.textContent = "Error";
+      }
+    }
+
+    async function handleCopyClick() {
+      const periodInput = document.getElementById("budget-period");
+      const toPeriod = periodInput.value;
+      if (!toPeriod) return;
+
+      const [year, month] = toPeriod.split("-");
+      const monthNumber = parseInt(month, 10);
+      const prevMonthNumber = monthNumber - 1;
+      let prevYear = parseInt(year, 10);
+      let prevMonth = prevMonthNumber;
+
+      if (prevMonthNumber < 1) {
+        prevYear = prevYear - 1;
+        prevMonth = 12;
+      }
+
+      const fromPeriod = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
+
+      try {
+        const result = await copyBudgets(fromPeriod, toPeriod);
+        console.debug("[budgets] copyBudgets result", result);
+        await loadEditorForCurrentPeriod();
+      } catch (err) {
+        console.error("[budgets] copyBudgets error", err);
+      }
+    }
+
+    async function loadSummaryForCurrentPeriod() {
+      const period = getPeriodFromInput();
+      if (!period) return;
+
+      const summaryContainer = document.getElementById("budget-summary");
+      summaryContainer.innerHTML = "Loading summary...";
+
+      try {
+        const { rows, summary } = await buildBudgetActuals(period);
+
+        const table = document.createElement("table");
+        table.className = "budget-summary-table";
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Budget</th>
+              <th>Actual</th>
+              <th>Variance</th>
+              <th>% Used</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector("tbody");
+
+        rows.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.categoryEmoji || ""} ${row.categoryName}</td>
+            <td>${row.type}</td>
+            <td>${formatCents(row.budgetAmountCents)}</td>
+            <td>${formatCents(row.actualAmountCents)}</td>
+            <td>${formatCents(row.varianceCents)}</td>
+            <td>${row.percentUsed.toFixed(1)}%</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        summaryContainer.innerHTML = "";
+        summaryContainer.appendChild(table);
+      } catch (err) {
+        console.error("[budgets] loadSummaryForCurrentPeriod error", err);
+        summaryContainer.innerHTML = `Error loading summary: ${err.message}`;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const periodInput = document.getElementById("budget-period");
+      const today = new Date();
+      const initialPeriod = `${today.getFullYear()}-${String(
+        today.getMonth() + 1
+      ).padStart(2, "0")}`;
+      periodInput.value = initialPeriod;
+
+      periodInput.addEventListener("change", () => {
+        loadEditorForCurrentPeriod();
+        loadSummaryForCurrentPeriod();
+      });
+
+      document
+        .getElementById("budget-editor-tbody")
+        .addEventListener("click", handleSaveClick);
+
+      document
+        .getElementById("budget-copy-button")
+        .addEventListener("click", handleCopyClick);
+
+      document
+        .getElementById("budget-refresh-summary")
+        .addEventListener("click", loadSummaryForCurrentPeriod);
+
+      initBudgetsPage(null);
+
+      loadEditorForCurrentPeriod();
+      loadSummaryForCurrentPeriod();
+    });
+  </script>
+</head>
+<body>
+  <main class="page page-budget">
+    <section class="budget-header">
+      <h1>Budgets</h1>
+      <div class="budget-controls">
+        <label>
+          Month:
+          <input id="budget-period" type="month">
+        </label>
+        <button id="budget-copy-button">Copy from previous month</button>
+        <button id="budget-refresh-summary">Refresh summary</button>
+      </div>
+    </section>
+
+    <section class="budget-editor">
+      <h2>Category Budgets</h2>
+      <table class="budget-editor-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Expense budget</th>
+            <th>Income budget</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="budget-editor-tbody">
+          <tr><td colspan="4">Loading...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="budget-summary-section">
+      <h2>Budget vs Actual</h2>
+      <div id="budget-summary">
+        <!-- Summary table will be injected here -->
+      </div>
+    </section>
+  </main>
+</body>
+</html>
