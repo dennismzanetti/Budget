@@ -3,8 +3,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -52,11 +50,6 @@ function bindThemeToggles() {
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 async function login() {
-  const useRedirect = window.innerWidth < 768;
-  if (useRedirect) {
-    await signInWithRedirect(auth, provider);
-    return;
-  }
   await signInWithPopup(auth, provider);
 }
 
@@ -108,12 +101,7 @@ function updateUI(user) {
   if (getPage() === 'import')       initImportPage();
 }
 
-async function initAuth() {
-  try {
-    await getRedirectResult(auth);
-  } catch (error) {
-    console.error("Redirect sign-in failed:", error);
-  }
+function initAuth() {
   onAuthStateChanged(auth, updateUI);
 }
 
@@ -147,5 +135,5 @@ export { db };
     catch (error) { console.error("Logout failed:", error); alert(error.message); }
   });
 
-  await initAuth();
+  initAuth();
 })();
