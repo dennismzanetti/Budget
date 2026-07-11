@@ -36,6 +36,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { getCategoriesMap } from "./categories.js";
+import { formatCents } from "./transactions.js";
 
 let _db = null;
 
@@ -103,7 +104,6 @@ function makeBudgetKey(categoryId, period, type) {
  * Fetch budgets for a single month period (YYYY-MM).
  */
 export async function fetchBudgetsForPeriod(period) {
-  // Simple query first: period + categoryName ordering
   const q = query(
     budgetsRef(),
     where("period", "==", period),
@@ -159,10 +159,6 @@ export async function findExistingBudget(categoryId, period, type) {
 
 /**
  * Upsert a budget row (editable budgets).
- *
- * If id is provided, updates that doc.
- * Else, finds existing budget for category+period+type and updates it.
- * Else, creates a new doc.
  */
 export async function saveBudget(input) {
   const {
@@ -226,7 +222,6 @@ export async function deleteBudgetById(id) {
 
 /**
  * Build Budget vs Actual rows for a given month.
- * Returns rows and a summary, ready for display.
  */
 export async function buildBudgetActuals(period) {
   const [catMap, budgets, txns] = await Promise.all([
@@ -339,8 +334,7 @@ export async function buildBudgetActuals(period) {
 }
 
 /**
- * Build rows for an editable budgets page: one row per category
- * with expense and income budget amounts.
+ * Build rows for an editable budgets page.
  */
 export async function buildBudgetEditorRows(period) {
   const [catMap, budgets] = await Promise.all([
@@ -384,7 +378,7 @@ export async function buildBudgetEditorRows(period) {
 }
 
 /**
- * Copy budgets from one month to another (editable convenience).
+ * Copy budgets from one month to another.
  */
 export async function copyBudgets(fromPeriod, toPeriod) {
   if (fromPeriod === toPeriod) return { copied: 0 };
@@ -407,10 +401,178 @@ export async function copyBudgets(fromPeriod, toPeriod) {
   return { copied };
 }
 
+// ── Page state ────────────────────────────────────────────────────────────────
+let _pageInitialized = false;
+let _currentPeriod = null;
+
+function getPeriodFromInput() {
+  const input = document.getElementById("budget-period");
+  return input ? input.value : null;
+}
+
+async function loadEditorForCurrentPeriod() {
+  const period = getPeriodFromInput();
+  if (!period) return;
+  _currentPeriod = period;
+
+  const tbody = document.getElementById("budget-editor-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+
+  try {
+    const editorRows = await buildBudgetEditorRows(period);
+    tbody.innerHTML = "";
+
+    editorRows.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.dataset.categoryId = row.categoryId;
+      tr.innerHTML = `
+        <td class="category-cell">
+          <span class="category-emoji">${row.categoryEmoji || ""}</span>
+          <span class="category-name">${row.categoryName}</span>
+        </td>
+        <td>
+          <input type="number" min="0" step="0.01" class="budget-input" data-type="expense"
+            value="${(row.expenseAmountCents || 0) / 100}">
+        </td>
+        <td>
+          <input type="number" min="0" step="0.01" class="budget-input" data-type="income"
+            value="${(row.incomeAmountCents || 0) / 100}">
+        </td>
+        <td><button class="budget-save-button btn btn-primary">Save</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error("[budgets] loadEditorForCurrentPeriod error", err);
+    tbody.innerHTML = `<tr><td colspan="4">Error loading budgets: ${err.message}</td></tr>`;
+  }
+}
+
+async function handleSaveClick(event) {
+  const button = event.target;
+  if (!button.classList.contains("budget-save-button")) return;
+
+  const tr = button.closest("tr");
+  const categoryId = tr.dataset.categoryId;
+  const categoryName = tr.querySelector(".category-name").textContent;
+
+  const expenseInput = tr.querySelector('input[data-type="expense"]');
+  const incomeInput  = tr.querySelector('input[data-type="income"]');
+
+  const expenseAmountCents = Math.round((parseFloat(expenseInput.value || "0") || 0) * 100);
+  const incomeAmountCents  = Math.round((parseFloat(incomeInput.value  || "0") || 0) * 100);
+
+  try {
+    if (expenseAmountCents >= 0) {
+      await saveBudget({ categoryId, categoryName, period: _currentPeriod, amountCents: expenseAmountCents, type: "expense" });
+    }
+    if (incomeAmountCents >= 0) {
+      await saveBudget({ categoryId, categoryName, period: _currentPeriod, amountCents: incomeAmountCents, type: "income" });
+    }
+    button.textContent = "Saved";
+    setTimeout(() => { button.textContent = "Save"; }, 1500);
+  } catch (err) {
+    console.error("[budgets] saveBudget error", err);
+    button.textContent = "Error";
+  }
+}
+
+async function handleCopyClick() {
+  const toPeriod = getPeriodFromInput();
+  if (!toPeriod) return;
+
+  const [year, month] = toPeriod.split("-");
+  let prevYear  = parseInt(year, 10);
+  let prevMonth = parseInt(month, 10) - 1;
+  if (prevMonth < 1) { prevYear -= 1; prevMonth = 12; }
+
+  const fromPeriod = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
+
+  try {
+    const result = await copyBudgets(fromPeriod, toPeriod);
+    console.debug("[budgets] copyBudgets result", result);
+    await loadEditorForCurrentPeriod();
+  } catch (err) {
+    console.error("[budgets] copyBudgets error", err);
+  }
+}
+
+async function loadSummaryForCurrentPeriod() {
+  const period = getPeriodFromInput();
+  if (!period) return;
+
+  const summaryContainer = document.getElementById("budget-summary");
+  if (!summaryContainer) return;
+  summaryContainer.innerHTML = "Loading summary...";
+
+  try {
+    const { rows } = await buildBudgetActuals(period);
+
+    const table = document.createElement("table");
+    table.className = "budget-summary-table";
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Category</th><th>Type</th><th>Budget</th>
+          <th>Actual</th><th>Variance</th><th>% Used</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector("tbody");
+    rows.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.categoryEmoji || ""} ${row.categoryName}</td>
+        <td>${row.type}</td>
+        <td>${formatCents(row.budgetAmountCents)}</td>
+        <td>${formatCents(row.actualAmountCents)}</td>
+        <td>${formatCents(row.varianceCents)}</td>
+        <td>${row.percentUsed.toFixed(1)}%</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    summaryContainer.innerHTML = "";
+    summaryContainer.appendChild(table);
+  } catch (err) {
+    console.error("[budgets] loadSummaryForCurrentPeriod error", err);
+    summaryContainer.innerHTML = `Error loading summary: ${err.message}`;
+  }
+}
+
 /**
- * Placeholder initializer for the budgets page. Wire this from nav.js.
+ * Initialize the budgets page — wire DOM listeners and load data.
+ * Called from app.js when the user navigates to #budget.
+ * Safe to call multiple times (re-loads data on each visit).
  */
-export async function initBudgetsPage(uid) {
-  console.debug("[budgets] initBudgetsPage called for uid:", uid);
-  // TODO: hook up DOM rendering for editable budgets UI.
+export function initBudgetsPage() {
+  const periodInput = document.getElementById("budget-period");
+  if (!periodInput) return; // partial not yet in DOM
+
+  if (!_pageInitialized) {
+    _pageInitialized = true;
+
+    const today = new Date();
+    periodInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+    periodInput.addEventListener("change", () => {
+      loadEditorForCurrentPeriod();
+      loadSummaryForCurrentPeriod();
+    });
+
+    document.getElementById("budget-editor-tbody")
+      ?.addEventListener("click", handleSaveClick);
+
+    document.getElementById("budget-copy-button")
+      ?.addEventListener("click", handleCopyClick);
+
+    document.getElementById("budget-refresh-summary")
+      ?.addEventListener("click", loadSummaryForCurrentPeriod);
+  }
+
+  loadEditorForCurrentPeriod();
+  loadSummaryForCurrentPeriod();
 }
