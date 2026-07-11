@@ -7,6 +7,21 @@
     </button>
   </div>
 
+  <!-- ── Month nav (mirrors categories breakdown controls) ─────── -->
+  <div class="cat-breakdown" id="acctBreakdown">
+    <div class="cat-breakdown__header">
+      <div class="cat-breakdown__controls">
+        <button class="cat-breakdown__nav" id="acctBreakdownPrev" aria-label="Previous month">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="cat-breakdown__period" id="acctBreakdownPeriod">Loading…</span>
+        <button class="cat-breakdown__nav" id="acctBreakdownNext" aria-label="Next month">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="addAccountForm" class="card hidden" aria-label="Add new account">
     <h3 class="card-title">New Account</h3>
     <div class="form-grid">
@@ -37,5 +52,5 @@
     </div>
   </div>
 
-  <div id="accountsList" aria-live="polite"></div>
+  <ul id="accountsList" class="accounts-list" aria-live="polite"></ul>
 </section>
