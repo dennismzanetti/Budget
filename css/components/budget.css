@@ -1,6 +1,6 @@
 /* ── Budget Page ─────────────────────────────────────────────────────── */
 
-#budget {
+#budget:not(.hidden) {
   display: flex;
   flex-direction: column;
   height: 100%;
