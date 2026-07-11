@@ -9,7 +9,7 @@
         <input id="budget-period" type="month" class="bgt-month-input" />
       </label>
       <button id="budget-copy-button" class="btn btn-secondary btn-sm">Copy from Previous Month</button>
-      <button id="budget-mode-toggle" class="btn btn-secondary btn-sm" data-mode="view">Edit Budgets</button>
+      <button id="budget-mode-toggle" class="btn btn-primary btn-sm" data-mode="view">Edit Budgets</button>
     </div>
   </div>
 
@@ -70,6 +70,37 @@
           <tr><td colspan="5" class="bgt-loading">Loading…</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ── Edit Budgets Modal ── -->
+  <div class="bgt-modal-backdrop" id="bgt-modal-backdrop" aria-hidden="true">
+    <div class="bgt-modal" role="dialog" aria-modal="true" aria-labelledby="bgt-modal-title">
+      <div class="bgt-modal-header">
+        <div class="bgt-modal-title-group">
+          <h3 id="bgt-modal-title">Edit Budgets</h3>
+          <span class="bgt-modal-period" id="bgt-modal-period"></span>
+        </div>
+        <button class="bgt-modal-close" id="bgt-modal-close" aria-label="Close">✕</button>
+      </div>
+
+      <div class="bgt-modal-col-labels">
+        <span class="bgt-modal-col-label-cat">Category</span>
+        <span class="bgt-modal-col-label">Expense Budget</span>
+        <span class="bgt-modal-col-label">Income Budget</span>
+      </div>
+
+      <div class="bgt-modal-body" id="bgt-modal-body">
+        <!-- rows injected by JS -->
+      </div>
+
+      <div class="bgt-modal-footer">
+        <span class="bgt-modal-save-status" id="bgt-modal-save-status"></span>
+        <div class="bgt-modal-footer-actions">
+          <button class="btn btn-secondary" id="bgt-modal-cancel">Cancel</button>
+          <button class="btn btn-primary" id="bgt-modal-save">Save All</button>
+        </div>
+      </div>
     </div>
   </div>
 

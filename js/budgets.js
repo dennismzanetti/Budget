@@ -66,6 +66,10 @@ function makeBudgetKey(categoryId, period, type) {
   return `${categoryId}__${period}__${type}`;
 }
 
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 // ── Firestore read/write ──────────────────────────────────────────────────────
 
 export async function fetchBudgetsForPeriod(period) {
@@ -222,9 +226,8 @@ export async function buildBudgetEditorRows(period) {
 // ── Page state ────────────────────────────────────────────────────────────────
 let _pageInitialized = false;
 let _currentPeriod   = null;
-let _editMode        = false;
 let _showZeros       = false;
-let _lastData        = null; // { rows, summary }
+let _lastData        = null;
 
 function getPeriod() {
   return document.getElementById("budget-period")?.value || null;
@@ -266,25 +269,11 @@ function buildProgressCell(row) {
 function buildVarianceCell(row) {
   if (row.budgetAmountCents === 0 && row.actualAmountCents === 0) return `<span class="bgt-value-neutral">—</span>`;
   if (row.budgetAmountCents === 0) return `<span class="bgt-value-neutral">—</span>`;
-  const cls = row.type === "expense"
-    ? (row.varianceCents >= 0 ? "bgt-value-positive" : "bgt-value-negative")
-    : (row.varianceCents >= 0 ? "bgt-value-positive" : "bgt-value-negative");
+  const cls = row.varianceCents >= 0 ? "bgt-value-positive" : "bgt-value-negative";
   return `<span class="${cls}">${fmt(row.varianceCents)}</span>`;
 }
 
 function buildBudgetCell(row) {
-  const dollars = (row.budgetAmountCents / 100).toFixed(2);
-  if (_editMode) {
-    return `<div class="bgt-cell-edit">
-      <span class="bgt-budget-display">${fmt(row.budgetAmountCents)}</span>
-      <input class="bgt-budget-input is-active" type="number" min="0" step="0.01"
-        data-category-id="${row.categoryId}"
-        data-category-name="${escHtml(row.categoryName)}"
-        data-type="${row.type}"
-        data-budget-id="${row.budgetId || ''}"
-        value="${dollars}" />
-    </div>`;
-  }
   return `<span class="bgt-budget-display"
     data-category-id="${row.categoryId}"
     data-category-name="${escHtml(row.categoryName)}"
@@ -292,10 +281,6 @@ function buildBudgetCell(row) {
     data-budget-id="${row.budgetId || ''}"
     tabindex="0"
     title="Click to edit">${fmt(row.budgetAmountCents)}</span>`;
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 function isZeroRow(row) {
@@ -335,43 +320,44 @@ function renderTable(data) {
   tbody.innerHTML = html;
 }
 
-// ── Inline editing ────────────────────────────────────────────────────────────
+// ── Inline editing (click a single cell in the table) ─────────────────────────
 
 function activateInlineEdit(display) {
-  const container  = display.closest("td");
-  const input      = container?.querySelector(".bgt-budget-input");
-  if (!input) {
-    // view mode: swap display→input on the fly
-    const categoryId   = display.dataset.categoryId;
-    const categoryName = display.dataset.categoryName;
-    const type         = display.dataset.type;
-    const budgetId     = display.dataset.budgetId || null;
-    const currentCents = _lastData?.rows.find(r => r.categoryId === categoryId && r.type === type)?.budgetAmountCents || 0;
-    const dollars      = (currentCents / 100).toFixed(2);
+  const container = display.closest("td");
+  if (!container) return;
 
-    const inp = document.createElement("input");
-    inp.type  = "number";
-    inp.min   = "0";
-    inp.step  = "0.01";
-    inp.className = "bgt-budget-input is-active";
-    inp.dataset.categoryId   = categoryId;
-    inp.dataset.categoryName = categoryName;
-    inp.dataset.type         = type;
-    inp.dataset.budgetId     = budgetId || "";
-    inp.value = dollars;
+  const categoryId   = display.dataset.categoryId;
+  const categoryName = display.dataset.categoryName;
+  const type         = display.dataset.type;
+  const budgetId     = display.dataset.budgetId || null;
+  const currentCents = _lastData?.rows.find(r => r.categoryId === categoryId && r.type === type)?.budgetAmountCents || 0;
+  const dollars      = (currentCents / 100).toFixed(2);
 
-    display.classList.add("is-editing");
-    container.appendChild(inp);
-    inp.focus();
-    inp.select();
+  const inp = document.createElement("input");
+  inp.type  = "number";
+  inp.min   = "0";
+  inp.step  = "0.01";
+  inp.className = "bgt-budget-input is-active";
+  inp.dataset.categoryId   = categoryId;
+  inp.dataset.categoryName = categoryName;
+  inp.dataset.type         = type;
+  inp.dataset.budgetId     = budgetId || "";
+  inp.value = dollars;
 
-    const commit = () => commitSave(inp, display);
-    inp.addEventListener("blur",    commit, { once: true });
-    inp.addEventListener("keydown", e => { if (e.key === "Enter") inp.blur(); if (e.key === "Escape") { inp.remove(); display.classList.remove("is-editing"); } });
-  }
+  display.classList.add("is-editing");
+  container.appendChild(inp);
+  inp.focus();
+  inp.select();
+
+  const commit = () => commitInlineSave(inp, display);
+  inp.addEventListener("blur",    commit, { once: true });
+  inp.addEventListener("keydown", e => {
+    if (e.key === "Enter")  inp.blur();
+    if (e.key === "Escape") { inp.remove(); display.classList.remove("is-editing"); }
+  });
 }
 
-async function commitSave(input, displayEl) {
+async function commitInlineSave(input, displayEl) {
   const categoryId   = input.dataset.categoryId;
   const categoryName = input.dataset.categoryName;
   const type         = input.dataset.type;
@@ -381,11 +367,161 @@ async function commitSave(input, displayEl) {
 
   try {
     await saveBudget({ categoryId, categoryName, period, amountCents, type });
-    // reload data and re-render
     await loadAndRender();
   } catch (err) {
-    console.error("[budgets] save error", err);
+    console.error("[budgets] inline save error", err);
     if (displayEl) { displayEl.classList.remove("is-editing"); input.remove(); }
+  }
+}
+
+// ── Edit Budgets Modal ────────────────────────────────────────────────────────
+
+function formatPeriodLabel(period) {
+  if (!period) return "";
+  const [y, m] = period.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+async function openBudgetModal() {
+  const period = getPeriod();
+  if (!period) return;
+
+  const backdrop = document.getElementById("bgt-modal-backdrop");
+  const body     = document.getElementById("bgt-modal-body");
+  const periodEl = document.getElementById("bgt-modal-period");
+  const saveBtn  = document.getElementById("bgt-modal-save");
+  const statusEl = document.getElementById("bgt-modal-save-status");
+  if (!backdrop || !body) return;
+
+  // Update title period label
+  if (periodEl) periodEl.textContent = formatPeriodLabel(period);
+  if (statusEl) statusEl.textContent = "";
+  if (saveBtn)  { saveBtn.disabled = false; saveBtn.textContent = "Save All"; }
+
+  // Show modal with loading state
+  body.innerHTML = `<div class="bgt-modal-loading">Loading categories…</div>`;
+  backdrop.classList.add("is-open");
+  backdrop.setAttribute("aria-hidden", "false");
+  document.body.classList.add("bgt-modal-open");
+
+  // Load editor rows
+  try {
+    const editorRows = await buildBudgetEditorRows(period);
+    renderModalRows(editorRows, body);
+    // Focus first expense input
+    body.querySelector(".bgt-modal-input")?.focus();
+  } catch (err) {
+    console.error("[budgets] modal load error", err);
+    body.innerHTML = `<div class="bgt-modal-loading bgt-modal-error">Error loading categories: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function renderModalRows(editorRows, body) {
+  // Split into categories that have any budget set vs those that don't
+  // Render all in alpha order, no split — simpler for bulk entry
+  let html = `
+    <div class="bgt-modal-group-header bgt-modal-group--expense">Expense Budgets</div>
+  `;
+  editorRows.forEach(row => {
+    const dot = row.categoryColor
+      ? `<span class="bgt-cat-dot" style="background:${row.categoryColor}"></span>`
+      : "";
+    const expVal = row.expenseAmountCents > 0 ? (row.expenseAmountCents / 100).toFixed(2) : "";
+    const incVal = row.incomeAmountCents  > 0 ? (row.incomeAmountCents  / 100).toFixed(2) : "";
+    html += `
+      <div class="bgt-modal-row" data-category-id="${row.categoryId}" data-category-name="${escHtml(row.categoryName)}">
+        <div class="bgt-modal-row-cat">
+          ${dot}
+          <span class="bgt-modal-row-emoji">${escHtml(row.categoryEmoji)}</span>
+          <span class="bgt-modal-row-name">${escHtml(row.categoryName)}</span>
+        </div>
+        <div class="bgt-modal-row-inputs">
+          <div class="bgt-modal-input-wrap">
+            <span class="bgt-modal-currency">$</span>
+            <input
+              class="bgt-modal-input"
+              type="number" min="0" step="0.01"
+              placeholder="0.00"
+              data-type="expense"
+              data-category-id="${row.categoryId}"
+              data-category-name="${escHtml(row.categoryName)}"
+              value="${expVal}"
+              aria-label="Expense budget for ${escHtml(row.categoryName)}"
+            />
+          </div>
+          <div class="bgt-modal-input-wrap">
+            <span class="bgt-modal-currency">$</span>
+            <input
+              class="bgt-modal-input bgt-modal-input--income"
+              type="number" min="0" step="0.01"
+              placeholder="0.00"
+              data-type="income"
+              data-category-id="${row.categoryId}"
+              data-category-name="${escHtml(row.categoryName)}"
+              value="${incVal}"
+              aria-label="Income budget for ${escHtml(row.categoryName)}"
+            />
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  body.innerHTML = html;
+}
+
+function closeBudgetModal() {
+  const backdrop = document.getElementById("bgt-modal-backdrop");
+  if (!backdrop) return;
+  backdrop.classList.remove("is-open");
+  backdrop.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("bgt-modal-open");
+}
+
+async function handleModalSave() {
+  const period  = getPeriod();
+  if (!period) return;
+
+  const saveBtn  = document.getElementById("bgt-modal-save");
+  const statusEl = document.getElementById("bgt-modal-save-status");
+  const inputs   = document.querySelectorAll("#bgt-modal-body .bgt-modal-input");
+
+  if (saveBtn)  { saveBtn.disabled = true; saveBtn.textContent = "Saving…"; }
+  if (statusEl) { statusEl.textContent = ""; statusEl.className = "bgt-modal-save-status"; }
+
+  const saves = [];
+  inputs.forEach(inp => {
+    const raw = inp.value.trim();
+    // Only save rows where user entered a value (including 0 to clear a budget)
+    if (raw === "") return;
+    const amountCents  = Math.round((parseFloat(raw) || 0) * 100);
+    const categoryId   = inp.dataset.categoryId;
+    const categoryName = inp.dataset.categoryName;
+    const type         = inp.dataset.type;
+    if (!categoryId || !categoryName) return;
+    saves.push(saveBudget({ categoryId, categoryName, period, amountCents, type }));
+  });
+
+  if (saves.length === 0) {
+    closeBudgetModal();
+    return;
+  }
+
+  try {
+    await Promise.all(saves);
+    if (statusEl) {
+      statusEl.textContent = `✓ ${saves.length} budget${saves.length !== 1 ? "s" : ""} saved`;
+      statusEl.className = "bgt-modal-save-status is-success";
+    }
+    // Reload the table in the background, close modal after brief confirmation
+    loadAndRender();
+    setTimeout(closeBudgetModal, 900);
+  } catch (err) {
+    console.error("[budgets] modal save error", err);
+    if (statusEl) {
+      statusEl.textContent = "Save failed: " + err.message;
+      statusEl.className = "bgt-modal-save-status is-error";
+    }
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Save All"; }
   }
 }
 
@@ -430,18 +566,6 @@ async function handleCopyClick() {
   }
 }
 
-// ── Toggle edit mode ──────────────────────────────────────────────────────────
-
-function handleModeToggle() {
-  _editMode = !_editMode;
-  const btn = document.getElementById("budget-mode-toggle");
-  if (btn) {
-    btn.textContent  = _editMode ? "Done Editing" : "Edit Budgets";
-    btn.dataset.mode = _editMode ? "edit" : "view";
-  }
-  if (_lastData) renderTable(_lastData);
-}
-
 // ── Show zeros toggle ─────────────────────────────────────────────────────────
 
 function handleShowZerosToggle(e) {
@@ -452,25 +576,15 @@ function handleShowZerosToggle(e) {
 // ── Table click delegation (inline edit in view mode) ─────────────────────────
 
 function handleTableClick(e) {
-  if (_editMode) return;
   const display = e.target.closest(".bgt-budget-display");
   if (display) activateInlineEdit(display);
 }
 
 function handleTableKeydown(e) {
-  if (_editMode) return;
   if (e.key === "Enter" || e.key === " ") {
     const display = e.target.closest(".bgt-budget-display");
     if (display) { e.preventDefault(); activateInlineEdit(display); }
   }
-}
-
-// ── Edit mode: save all on blur for inputs ────────────────────────────────────
-
-function handleTableBlur(e) {
-  if (!_editMode) return;
-  const input = e.target.closest(".bgt-budget-input");
-  if (input) commitSave(input, null);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -487,13 +601,30 @@ export function initBudgetsPage() {
 
     periodInput.addEventListener("change", loadAndRender);
     document.getElementById("budget-copy-button")?.addEventListener("click", handleCopyClick);
-    document.getElementById("budget-mode-toggle")?.addEventListener("click", handleModeToggle);
+    document.getElementById("budget-mode-toggle")?.addEventListener("click", openBudgetModal);
     document.getElementById("bgt-show-zeros")?.addEventListener("change",   handleShowZerosToggle);
+
+    // Modal controls
+    document.getElementById("bgt-modal-close")?.addEventListener("click",  closeBudgetModal);
+    document.getElementById("bgt-modal-cancel")?.addEventListener("click", closeBudgetModal);
+    document.getElementById("bgt-modal-save")?.addEventListener("click",   handleModalSave);
+
+    // Close on backdrop click
+    document.getElementById("bgt-modal-backdrop")?.addEventListener("click", e => {
+      if (e.target === e.currentTarget) closeBudgetModal();
+    });
+
+    // Close on Escape
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") {
+        const backdrop = document.getElementById("bgt-modal-backdrop");
+        if (backdrop?.classList.contains("is-open")) closeBudgetModal();
+      }
+    });
 
     const tableEl = document.getElementById("bgt-table");
     tableEl?.addEventListener("click",   handleTableClick);
     tableEl?.addEventListener("keydown", handleTableKeydown);
-    tableEl?.addEventListener("blur",    handleTableBlur, true);
   }
 
   loadAndRender();
