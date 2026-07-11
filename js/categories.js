@@ -109,11 +109,13 @@ const EMOJI_CATEGORIES = [
 
 /**
  * Initialise an emoji picker attached to a trigger button + hidden input.
+ * Uses a portal pattern: the popup is appended to <body> and positioned
+ * via getBoundingClientRect() to escape any stacking context / overflow constraints.
  *
  * @param {object} opts
  *   triggerBtn  — <button> that opens/closes the popup
  *   displaySpan — <span> inside the trigger that shows the current emoji
- *   popup       — popup <div>
+ *   popup       — popup <div> (initially inside the DOM; will be moved to body)
  *   tabsEl      — tabs container inside popup
  *   gridEl      — emoji grid container inside popup
  *   clearBtn    — clear button inside popup
@@ -127,6 +129,38 @@ function initEmojiPicker(opts) {
   } = opts;
 
   let activeCategory = 0;
+
+  // ── Portal: move popup to <body> so it escapes all stacking contexts ──
+  if (popup.parentElement !== document.body) {
+    document.body.appendChild(popup);
+  }
+
+  // Ensure the popup is fixed-position so it can overlay anything
+  popup.style.position = "fixed";
+  popup.style.zIndex   = "9999";
+
+  function positionPopup() {
+    const rect = triggerBtn.getBoundingClientRect();
+    const popupHeight = popup.offsetHeight || 320;
+    const spaceBelow  = window.innerHeight - rect.bottom;
+    const spaceAbove  = rect.top;
+
+    if (spaceBelow >= popupHeight || spaceBelow >= spaceAbove) {
+      // Open downward
+      popup.style.top  = (rect.bottom + 4) + "px";
+    } else {
+      // Open upward
+      popup.style.top  = (rect.top - popupHeight - 4) + "px";
+    }
+    popup.style.left = rect.left + "px";
+
+    // Keep within right edge of viewport
+    const popupWidth = popup.offsetWidth || 280;
+    const rightEdge  = rect.left + popupWidth;
+    if (rightEdge > window.innerWidth - 8) {
+      popup.style.left = Math.max(8, window.innerWidth - popupWidth - 8) + "px";
+    }
+  }
 
   function renderTabs() {
     tabsEl.innerHTML = EMOJI_CATEGORIES.map((cat, i) =>
@@ -160,6 +194,8 @@ function initEmojiPicker(opts) {
     triggerBtn.setAttribute("aria-expanded", "true");
     renderTabs();
     renderGrid();
+    // Position after rendering so offsetHeight is accurate
+    requestAnimationFrame(positionPopup);
   }
 
   function closePopup() {
@@ -179,12 +215,28 @@ function initEmojiPicker(opts) {
     closePopup();
   });
 
-  // Close on outside click
+  // Close on outside click — check against trigger and popup directly
   document.addEventListener("click", e => {
-    if (!popup.classList.contains("hidden") && !triggerBtn.closest(".emoji-picker-wrap").contains(e.target)) {
+    if (!popup.classList.contains("hidden") &&
+        !triggerBtn.contains(e.target) &&
+        !popup.contains(e.target)) {
       closePopup();
     }
   });
+
+  // Reposition on scroll or resize; close if trigger scrolls out of view
+  const scrollHandler = () => {
+    if (!popup.classList.contains("hidden")) {
+      const rect = triggerBtn.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        closePopup();
+      } else {
+        positionPopup();
+      }
+    }
+  };
+  window.addEventListener("scroll", scrollHandler, { passive: true, capture: true });
+  window.addEventListener("resize", scrollHandler, { passive: true });
 
   // Set initial display
   const initial = hiddenInput.value;
