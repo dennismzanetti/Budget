@@ -103,17 +103,11 @@ export async function seedAccountsIfEmpty(_uid) {
   }
 }
 
-// ── Public map helper ─────────────────────────────────────────────────
-/**
- * Returns a map of { accountId -> { name, type } }.
- * Mirrors the getCategoriesMap() pattern in categories.js.
- */
+// ── Returns a map of { accountId -> { name, type } } ─────────────────
 export async function getAccountsMap(_uid) {
   const accounts = await fetchAccounts();
   const map = {};
-  accounts.forEach(a => {
-    map[a.id] = { name: a.name, type: a.type };
-  });
+  accounts.forEach(a => { map[a.id] = { name: a.name, type: a.type }; });
   return map;
 }
 
@@ -136,54 +130,5 @@ export async function populateAccountSelect(_uid, selectEl) {
   } catch (err) {
     console.error("[accounts] populateAccountSelect error:", err);
     selectEl.innerHTML = '<option value="">Error loading accounts</option>';
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────
-function escHtml(str) {
-  return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function fmtCurrency(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return "$0.00";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-}
-
-function fmtDate(ts) {
-  if (!ts) return "";
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-// ── Month navigation state ────────────────────────────────────────────
-const now = new Date();
-let acctYear  = now.getFullYear();
-let acctMonth = now.getMonth(); // 0-indexed
-
-function acctPeriodLabel() {
-  return new Date(acctYear, acctMonth, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
-function acctPeriodStart() { return new Date(acctYear, acctMonth, 1); }
-function acctPeriodEnd()   { return new Date(acctYear, acctMonth + 1, 1); }
-
-// ── Fetch ALL transactions for the current period ─────────────────────
-async function fetchTxForPeriod() {
-  try {
-    const txRef = collection(getDb(), "transactions");
-    const start = acctPeriodStart();
-    const end   = acctPeriodEnd();
-    const q = query(
-      txRef,
-      where("date", ">=", Timestamp.fromDate(start)),
-      where("date", "<",  Timestamp.fromDate(end)),
-      orderBy("date", "desc")
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (err) {
-    console.error("[accounts] fetchTxForPeriod error:", err);
-    return [];
   }
 }
