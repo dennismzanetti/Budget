@@ -173,6 +173,17 @@ async function fetchTxForPeriod() {
   }
 }
 
+// ── Navigate to the categories page and expand the given category ─────
+function navigateToCategory(categoryId) {
+  // Switch to the #categories hash route
+  window.location.hash = "categories";
+  // After the page renders, dispatch an event to expand the target category card
+  // Use a short delay to allow initCategoriesPage to finish rendering
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent("expand-category", { detail: { categoryId } }));
+  }, 300);
+}
+
 // ── Build expanded transaction list (mirrors categories buildCardTxList) ─
 function buildCardTxList(accountId, txns, catsMap) {
   const matching = txns
@@ -204,11 +215,15 @@ function buildCardTxList(accountId, txns, catsMap) {
     const typeClass = isIncome ? "txn-type-badge--income" : "txn-type-badge--expense";
     const typeLabel = isIncome ? "Income" : "Expense";
     const amtSign   = isIncome ? "" : "-";
+    // Only render as a link if there's a real categoryId to navigate to
+    const catCellHtml = tx.categoryId
+      ? `<button class="cat-link" data-category-id="${escHtml(tx.categoryId)}" title="Go to ${escHtml(catInfo.name)} category" type="button">${escHtml(catLabel)}</button>`
+      : `<span>${escHtml(catLabel)}</span>`;
     return `
       <tr class="cat-card-tx__row">
         <td class="cat-card-tx__date">${escHtml(fmtDate(tx.date))}</td>
         <td class="cat-card-tx__payee" title="${escHtml(payee)}">${escHtml(payee)}</td>
-        <td class="cat-card-tx__category">${escHtml(catLabel)}</td>
+        <td class="cat-card-tx__category">${catCellHtml}</td>
         <td class="cat-card-tx__type">
           <span class="txn-type-badge ${typeClass}">${typeLabel}</span>
         </td>
@@ -216,22 +231,31 @@ function buildCardTxList(accountId, txns, catsMap) {
       </tr>`;
   }).join("");
 
-  liWrap.innerHTML = `
-    <div class="cat-breakdown__tx-list cat-card-tx__wrapper">
-      <table class="cat-card-tx__table">
-        <thead>
-          <tr>
-            <th class="cat-card-tx__th">Date</th>
-            <th class="cat-card-tx__th">Payee</th>
-            <th class="cat-card-tx__th">Category</th>
-            <th class="cat-card-tx__th">Type</th>
-            <th class="cat-card-tx__th cat-card-tx__th--amount">Amount</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+  const wrapper = document.createElement("div");
+  wrapper.className = "cat-breakdown__tx-list cat-card-tx__wrapper";
+  wrapper.innerHTML = `
+    <table class="cat-card-tx__table">
+      <thead>
+        <tr>
+          <th class="cat-card-tx__th">Date</th>
+          <th class="cat-card-tx__th">Payee</th>
+          <th class="cat-card-tx__th">Category</th>
+          <th class="cat-card-tx__th">Type</th>
+          <th class="cat-card-tx__th cat-card-tx__th--amount">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 
+  // Wire up category link clicks
+  wrapper.querySelectorAll(".cat-link").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      navigateToCategory(btn.dataset.categoryId);
+    });
+  });
+
+  liWrap.appendChild(wrapper);
   return liWrap;
 }
 
