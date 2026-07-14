@@ -199,7 +199,7 @@ function navigateToCategory(categoryId) {
   }, 300);
 }
 
-// ── Build expanded transaction list (mirrors categories buildCardTxList) ─
+// ── Build expanded transaction list — same table structure as categories page ──
 function buildCardTxList(accountId, txns, catsMap) {
   const matching = txns
     .filter(tx => tx.accountId === accountId)
@@ -214,35 +214,46 @@ function buildCardTxList(accountId, txns, catsMap) {
   liWrap.dataset.txListFor = accountId;
 
   if (matching.length === 0) {
-    liWrap.innerHTML = `<div class="cat-breakdown__tx-list cat-card-tx__wrapper"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
+    liWrap.innerHTML = `<div class="cat-card-tx__wrapper"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
     return liWrap;
   }
 
-  const rows = matching.map(tx => {
+  const tbody = matching.map(tx => {
     const dateStr = fmtDate(tx.date);
     const amt     = parseFloat(tx.amount) || 0;
-    const amtCls  = amt < 0 ? "tx-amount--negative" : "tx-amount--positive";
-    const amtStr  = fmtCurrency(Math.abs(amt));
-    const sign    = amt < 0 ? "-" : "+";
+    const amtCls  = amt < 0 ? "cat-card-tx__amount--neg" : "cat-card-tx__amount--pos";
+    const amtStr  = fmtCurrency(amt);
     const catName = catsMap[tx.categoryId]?.name || tx.categoryName || tx.categoryId || "—";
     const memo    = escHtml(tx.memo || tx.description || "");
     const catId   = tx.categoryId || "";
 
     return `
-      <div class="cat-breakdown__tx-row" data-tx-id="${escHtml(tx.id)}">
-        <span class="tx-date">${escHtml(dateStr)}</span>
-        <span class="tx-memo">${memo || "&nbsp;"}</span>
-        <span class="tx-cat
-          ${catId ? " tx-cat--link" : ""}"
-          ${catId ? `data-cat-id="${escHtml(catId)}" title="Go to ${escHtml(catName)}"` : ""}
-        >${escHtml(catName)}</span>
-        <span class="tx-amount ${amtCls}">${sign}${amtStr}</span>
-      </div>`;
+      <tr class="cat-card-tx__row" data-tx-id="${escHtml(tx.id)}">
+        <td class="cat-card-tx__date">${escHtml(dateStr)}</td>
+        <td class="cat-card-tx__payee">${memo || "&nbsp;"}</td>
+        <td class="cat-card-tx__category${catId ? " cat-card-tx__category--link" : ""}"
+            ${catId ? `data-cat-id="${escHtml(catId)}" title="Go to ${escHtml(catName)}"` : ""}
+        >${escHtml(catName)}</td>
+        <td class="cat-card-tx__amount ${amtCls}">${amtStr}</td>
+      </tr>`;
   }).join("");
 
-  liWrap.innerHTML = `<div class="cat-breakdown__tx-list cat-card-tx__wrapper">${rows}</div>`;
+  liWrap.innerHTML = `
+    <div class="cat-card-tx__wrapper">
+      <table class="cat-card-tx__table">
+        <thead>
+          <tr>
+            <th class="cat-card-tx__th">Date</th>
+            <th class="cat-card-tx__th">Memo</th>
+            <th class="cat-card-tx__th">Category</th>
+            <th class="cat-card-tx__th cat-card-tx__th--amount">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>`;
 
-  liWrap.querySelectorAll(".tx-cat--link").forEach(el => {
+  liWrap.querySelectorAll(".cat-card-tx__category--link").forEach(el => {
     el.addEventListener("click", () => navigateToCategory(el.dataset.catId));
   });
 
