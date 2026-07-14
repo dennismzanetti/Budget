@@ -150,7 +150,7 @@ function escHtml(str) {
 function fmtCurrency(val) {
   const n = parseFloat(val);
   if (isNaN(n)) return "$0.00";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+  return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(ts) {
@@ -214,42 +214,53 @@ function buildCardTxList(accountId, txns, catsMap) {
   liWrap.dataset.txListFor = accountId;
 
   if (matching.length === 0) {
-    liWrap.innerHTML = `<div class="cat-card-tx__wrapper"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
+    liWrap.innerHTML = `<div class="cat-breakdown__tx-list cat-card-tx__wrapper"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
     return liWrap;
   }
 
-  const tbody = matching.map(tx => {
-    const dateStr = fmtDate(tx.date);
-    const amt     = parseFloat(tx.amount) || 0;
-    const amtCls  = amt < 0 ? "cat-card-tx__amount--neg" : "cat-card-tx__amount--pos";
-    const amtStr  = fmtCurrency(amt);
-    const catName = catsMap[tx.categoryId]?.name || tx.categoryName || tx.categoryId || "—";
-    const memo    = escHtml(tx.memo || tx.description || "");
-    const catId   = tx.categoryId || "";
+  const rows = matching.map(tx => {
+    const isIncome = tx.amountCents !== undefined ? tx.type === "income" : (parseFloat(tx.amount) || 0) > 0;
+    const absAmt = tx.amountCents !== undefined
+      ? tx.amountCents / 100
+      : Math.abs(parseFloat(tx.amount) || 0);
+    const payee = tx.payee || tx.description || "\u2014";
+    const catInfo = catsMap[tx.categoryId] || { name: "Uncategorized", emoji: "" };
+    const catLabel = catInfo.emoji ? `${catInfo.emoji} ${catInfo.name}` : catInfo.name;
+    const amtClass = isIncome ? "cat-card-tx__amount--income" : "cat-card-tx__amount--expense";
+    const typeClass = isIncome ? "txn-type-badge--income" : "txn-type-badge--expense";
+    const typeLabel = isIncome ? "Income" : "Expense";
+    const amtSign = isIncome ? "" : "-";
+    const catId = tx.categoryId || "";
 
     return `
       <tr class="cat-card-tx__row" data-tx-id="${escHtml(tx.id)}">
-        <td class="cat-card-tx__date">${escHtml(dateStr)}</td>
-        <td class="cat-card-tx__payee">${memo || "&nbsp;"}</td>
+        <td class="cat-card-tx__date">${escHtml(fmtDate(tx.date))}</td>
+        <td class="cat-card-tx__payee" title="${escHtml(payee)}">${escHtml(payee)}</td>
         <td class="cat-card-tx__category${catId ? " cat-card-tx__category--link" : ""}"
-            ${catId ? `data-cat-id="${escHtml(catId)}" title="Go to ${escHtml(catName)}"` : ""}
-        >${escHtml(catName)}</td>
-        <td class="cat-card-tx__amount ${amtCls}">${amtStr}</td>
+            ${catId ? `data-cat-id="${escHtml(catId)}" title="Go to ${escHtml(catLabel)}"` : ""}
+        >${escHtml(catLabel)}</td>
+        <td class="cat-card-tx__account">&nbsp;</td>
+        <td class="cat-card-tx__type">
+          <span class="txn-type-badge ${typeClass}">${typeLabel}</span>
+        </td>
+        <td class="cat-card-tx__amount ${amtClass}">${amtSign}${fmtCurrency(absAmt)}</td>
       </tr>`;
   }).join("");
 
   liWrap.innerHTML = `
-    <div class="cat-card-tx__wrapper">
+    <div class="cat-breakdown__tx-list cat-card-tx__wrapper">
       <table class="cat-card-tx__table">
         <thead>
           <tr>
             <th class="cat-card-tx__th">Date</th>
-            <th class="cat-card-tx__th">Memo</th>
+            <th class="cat-card-tx__th">Payee</th>
             <th class="cat-card-tx__th">Category</th>
+            <th class="cat-card-tx__th">Account</th>
+            <th class="cat-card-tx__th">Type</th>
             <th class="cat-card-tx__th cat-card-tx__th--amount">Amount</th>
           </tr>
         </thead>
-        <tbody>${tbody}</tbody>
+        <tbody>${rows}</tbody>
       </table>
     </div>`;
 
@@ -279,39 +290,75 @@ function renderAccountCards(accounts, txns, catsMap, container) {
 
     const section = document.createElement("section");
     section.className = "acct-type-section";
-    section.innerHTML = `<h3 class="acct-type-heading">${escHtml(TYPE_LABELS[type] ?? type)}</h3>`;
+    section.innerHTML = `<h3 class="acct-type-section__title">${escHtml(TYPE_LABELS[type] ?? type)}</h3>`;
 
     const ul = document.createElement("ul");
-    ul.className = "cat-breakdown__list";
+    ul.className = "accounts-list";
 
     list.forEach(acct => {
       const acctTxns = txns.filter(tx => tx.accountId === acct.id);
-      const total = acctTxns.reduce((s, tx) => s + (parseFloat(tx.amount) || 0), 0);
+      let balance = 0;
+      acctTxns.forEach(tx => {
+        if (tx.amountCents !== undefined) {
+          balance += tx.type === "income" ? tx.amountCents / 100 : -(tx.amountCents / 100);
+        } else {
+          balance += parseFloat(tx.amount) || 0;
+        }
+      });
+
       const isAsset = ASSET_TYPES.includes(acct.type);
-      const amtCls = isAsset
-        ? (total >= 0 ? "tx-amount--positive" : "tx-amount--negative")
-        : (total <= 0 ? "tx-amount--negative" : "tx-amount--positive");
+      const balanceClass = isAsset
+        ? (balance >= 0 ? "account-card__amount--income" : "account-card__amount--expense")
+        : (balance <= 0 ? "account-card__amount--expense" : "account-card__amount--income");
 
       const li = document.createElement("li");
-      li.className = "cat-breakdown__item";
-      li.dataset.acctId = acct.id;
+      li.className = "account-card account-card--expandable";
+      li.dataset.id = acct.id;
+      li.setAttribute("role", "button");
+      li.setAttribute("tabindex", "0");
+      li.setAttribute("aria-expanded", "false");
       li.innerHTML = `
-        <div class="cat-breakdown__row cat-breakdown__row--clickable">
-          <span class="cat-breakdown__name">${escHtml(acct.name)}</span>
-          <span class="cat-breakdown__amount ${amtCls}">${fmtCurrency(total)}</span>
-          <span class="cat-breakdown__toggle-icon">▶</span>
+        <svg class="cat-breakdown__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="account-card__name">${escHtml(acct.name)}</span>
+        <span class="account-card__amount ${balanceClass}">${fmtCurrency(balance)}</span>
+        <div class="account-card__actions">
+          <button class="btn btn-ghost btn-sm js-edit-account" data-id="${escHtml(acct.id)}" title="Edit account" aria-label="Edit account">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
         </div>`;
 
-      li.querySelector(".cat-breakdown__row--clickable").addEventListener("click", () => {
-        const existing = ul.querySelector(`[data-tx-list-for="${acct.id}"]`);
-        if (existing) {
-          existing.remove();
-          li.querySelector(".cat-breakdown__toggle-icon").textContent = "▶";
-          return;
+      li.addEventListener("click", e => {
+        if (e.target.closest(".js-edit-account")) return;
+        const isExpanded = li.classList.contains("is-expanded");
+
+        ul.querySelectorAll(".account-card--expandable.is-expanded").forEach(open => {
+          if (open !== li) {
+            open.classList.remove("is-expanded");
+            open.setAttribute("aria-expanded", "false");
+            const existing = ul.querySelector(`.cat-breakdown__tx-list-row[data-tx-list-for="${open.dataset.id}"]`);
+            if (existing) existing.remove();
+          }
+        });
+
+        if (isExpanded) {
+          li.classList.remove("is-expanded");
+          li.setAttribute("aria-expanded", "false");
+          const existing = ul.querySelector(`.cat-breakdown__tx-list-row[data-tx-list-for="${acct.id}"]`);
+          if (existing) existing.remove();
+        } else {
+          li.classList.add("is-expanded");
+          li.setAttribute("aria-expanded", "true");
+          const txListItem = buildCardTxList(acct.id, txns, catsMap);
+          li.insertAdjacentElement("afterend", txListItem);
         }
-        li.querySelector(".cat-breakdown__toggle-icon").textContent = "▼";
-        const txList = buildCardTxList(acct.id, txns, catsMap);
-        li.after(txList);
+      });
+
+      li.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          if (e.target.closest(".js-edit-account")) return;
+          e.preventDefault();
+          li.click();
+        }
       });
 
       ul.appendChild(li);
@@ -322,44 +369,18 @@ function renderAccountCards(accounts, txns, catsMap, container) {
   });
 }
 
-// ── Totals bar ────────────────────────────────────────────────────────
-function renderTotalsBar(accounts, txns, container) {
-  if (!container) return;
-
-  const totalIncome  = txns.filter(tx => (parseFloat(tx.amount) || 0) > 0).reduce((s, tx) => s + parseFloat(tx.amount), 0);
-  const totalExpense = txns.filter(tx => (parseFloat(tx.amount) || 0) < 0).reduce((s, tx) => s + parseFloat(tx.amount), 0);
-  const net = totalIncome + totalExpense;
-  const netCls = net >= 0 ? "tx-amount--positive" : "tx-amount--negative";
-
-  container.innerHTML = `
-    <div class="acct-totals__row">
-      <span class="acct-totals__label">Income</span>
-      <span class="acct-totals__amount tx-amount--positive">${fmtCurrency(totalIncome)}</span>
-    </div>
-    <div class="acct-totals__row">
-      <span class="acct-totals__label">Expenses</span>
-      <span class="acct-totals__amount tx-amount--negative">${fmtCurrency(Math.abs(totalExpense))}</span>
-    </div>
-    <div class="acct-totals__row acct-totals__row--net">
-      <span class="acct-totals__label">Net</span>
-      <span class="acct-totals__amount ${netCls}">${fmtCurrency(net)}</span>
-    </div>`;
-}
-
-// ── Main page init ────────────────────────────────────────────────────
-export async function initAccountsPage(uid) {
-  const container   = document.getElementById("accounts-breakdown");
-  const periodLabel = document.getElementById("acct-period-label");
-  const prevBtn     = document.getElementById("acct-prev-month");
-  const nextBtn     = document.getElementById("acct-next-month");
-  const totalsBar   = document.getElementById("acct-totals-bar");
+// ── Accounts Page UI ──────────────────────────────────────────────────
+export async function initAccountsPage(_uid) {
+  const container = document.getElementById("accountsList");
+  const periodEl  = document.getElementById("acctPeriodLabel");
+  const prevBtn   = document.getElementById("acctPrevMonth");
+  const nextBtn   = document.getElementById("acctNextMonth");
 
   if (!container) return;
 
   async function refresh() {
-    if (periodLabel) periodLabel.textContent = acctPeriodLabel();
-    container.innerHTML = '<div class="cat-breakdown__loading">Loading\u2026</div>';
-
+    if (periodEl) periodEl.textContent = acctPeriodLabel();
+    container.innerHTML = '<li class="accounts-loading">Loading\u2026</li>';
     try {
       const [accounts, txns, catsMap] = await Promise.all([
         fetchAccounts(),
@@ -367,16 +388,45 @@ export async function initAccountsPage(uid) {
         fetchCategoriesMap(),
       ]);
       updateAccountsBadge(accounts);
-      renderTotalsBar(accounts, txns, totalsBar);
+      if (accounts.length === 0) {
+        container.innerHTML = `<li class="accounts-empty"><p>No accounts found.</p></li>`;
+        return;
+      }
       renderAccountCards(accounts, txns, catsMap, container);
     } catch (err) {
       console.error("[accounts] refresh error:", err);
-      container.innerHTML = '<div class="cat-breakdown__error">Error loading accounts.</div>';
+      container.innerHTML = '<li class="accounts-empty"><p>Error loading accounts.</p></li>';
     }
   }
 
-  prevBtn?.addEventListener("click", () => { acctMonth--; if (acctMonth < 0) { acctMonth = 11; acctYear--; } refresh(); });
-  nextBtn?.addEventListener("click", () => { acctMonth++; if (acctMonth > 11) { acctMonth = 0; acctYear++; } refresh(); });
+  prevBtn?.addEventListener("click", () => {
+    acctMonth--;
+    if (acctMonth < 0) { acctMonth = 11; acctYear--; }
+    refresh();
+  });
+
+  nextBtn?.addEventListener("click", () => {
+    acctMonth++;
+    if (acctMonth > 11) { acctMonth = 0; acctYear++; }
+    refresh();
+  });
+
+  // ── expand-account event: expand a specific account card ──────────────
+  window.addEventListener("expand-account", e => {
+    const { accountId } = e.detail || {};
+    if (!accountId) return;
+    let attempts = 0;
+    const tryExpand = () => {
+      const card = container.querySelector(`.account-card--expandable[data-id="${accountId}"]`);
+      if (card) {
+        if (!card.classList.contains("is-expanded")) card.click();
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (attempts++ < 10) {
+        setTimeout(tryExpand, 150);
+      }
+    };
+    tryExpand();
+  });
 
   await refresh();
 }
