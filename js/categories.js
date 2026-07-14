@@ -755,14 +755,15 @@ function renderCard(c, periodTotal, type) {
   const color = c.color || "#888888";
   const emoji = c.emoji || "";
   const hasPeriodTotal = periodTotal !== undefined && periodTotal > 0;
-  const amtClass = type === "income"
-    ? "category-card__period-total--income"
+  const amtColorClass = type === "income"
+    ? "account-card__amount--income"
     : type === "expense"
-      ? "category-card__period-total--expense"
+      ? "account-card__amount--expense"
       : "";
   const emojiHtml = emoji
     ? `<span class="category-card__emoji" aria-hidden="true">${escHtml(emoji)}</span>`
     : "";
+
   // Unique IDs for this card's emoji picker
   const epWrapId  = `cat-ep-wrap-${c.id}`;
   const epBtnId   = `cat-ep-btn-${c.id}`;
@@ -774,15 +775,14 @@ function renderCard(c, periodTotal, type) {
 
   return `
     <li class="account-card account-card--expandable" data-id="${c.id}" role="button" tabindex="0" aria-expanded="false">
-      <div class="account-card__info category-card__info-row">
-        <span class="category-swatch" style="background:${escHtml(color)}" aria-hidden="true"></span>
-        ${emojiHtml}
-        <span class="account-card__name">${escHtml(c.name)}</span>
-        <svg class="cat-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-      </div>
-      <div class="account-card__meta category-card__meta">
-        ${hasPeriodTotal ? `<span class="category-card__period-total ${amtClass}">${fmtCurrency(periodTotal)}</span>` : ""}
-      </div>
+      ${ICON_CHEVRON}
+      <span class="category-swatch" style="background:${escHtml(color)}" aria-hidden="true"></span>
+      ${emojiHtml}
+      <span class="account-card__name">${escHtml(c.name)}</span>
+      ${hasPeriodTotal
+        ? `<span class="account-card__amount ${amtColorClass}">${fmtCurrency(periodTotal)}</span>`
+        : `<span class="account-card__amount account-card__amount--empty">\u2014</span>`
+      }
       <div class="account-card__actions">
         <button class="btn btn-ghost btn-sm js-edit-category" data-id="${c.id}" title="Edit category" aria-label="Edit category">${ICON_EDIT}</button>
         <button class="btn btn-ghost btn-sm js-delete-category" data-id="${c.id}" title="Delete category" aria-label="Delete category">${ICON_DELETE}</button>
