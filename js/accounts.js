@@ -371,16 +371,16 @@ function renderAccountCards(accounts, txns, catsMap, container) {
 
 // ── Accounts Page UI ──────────────────────────────────────────────────
 export async function initAccountsPage(_uid) {
-  const container = document.getElementById("accountsList");
-  const periodEl  = document.getElementById("acctPeriodLabel");
-  const prevBtn   = document.getElementById("acctPrevMonth");
-  const nextBtn   = document.getElementById("acctNextMonth");
+  const container = document.getElementById("accounts-breakdown");
+  const periodEl  = document.getElementById("acct-period-label");
+  const prevBtn   = document.getElementById("acct-prev-month");
+  const nextBtn   = document.getElementById("acct-next-month");
 
   if (!container) return;
 
   async function refresh() {
     if (periodEl) periodEl.textContent = acctPeriodLabel();
-    container.innerHTML = '<li class="accounts-loading">Loading\u2026</li>';
+    container.innerHTML = '<p class="accounts-loading">Loading\u2026</p>';
     try {
       const [accounts, txns, catsMap] = await Promise.all([
         fetchAccounts(),
@@ -389,13 +389,13 @@ export async function initAccountsPage(_uid) {
       ]);
       updateAccountsBadge(accounts);
       if (accounts.length === 0) {
-        container.innerHTML = `<li class="accounts-empty"><p>No accounts found.</p></li>`;
+        container.innerHTML = `<p class="accounts-empty">No accounts found.</p>`;
         return;
       }
       renderAccountCards(accounts, txns, catsMap, container);
     } catch (err) {
       console.error("[accounts] refresh error:", err);
-      container.innerHTML = '<li class="accounts-empty"><p>Error loading accounts.</p></li>';
+      container.innerHTML = '<p class="accounts-empty">Error loading accounts.</p>';
     }
   }
 
