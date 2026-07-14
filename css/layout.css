@@ -66,6 +66,7 @@
   padding: 1rem 0.75rem;
   flex-shrink: 0;
   overflow-y: auto;
+  align-self: stretch;
 }
 
 /* ── Main content ── */
