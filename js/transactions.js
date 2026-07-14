@@ -292,7 +292,7 @@ export async function initTransactionsPage(_uid) {
 
     tbody.innerHTML = sorted.map(t => {
       const isIncome = t.type === "income";
-      const acctName = accountMap[t.accountId] ?? (t.accountId ? t.accountId : "\u2014");
+      const acctName = accountMap[t.accountId] ?? "\u2014";
       return `
         <tr class="txn-row" data-id="${t.id}">
           <td class="txn-col-date">${escHtml(formatDate(t.date))}</td>
