@@ -20,6 +20,7 @@ import {
   deleteDoc, doc, serverTimestamp, query, orderBy,
   where, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAccountsMap } from "./accounts.js";
 
 let _db = null;
 function getDb() {
@@ -478,7 +479,8 @@ function buildDonut(canvasId, labels, data, colors) {
 }
 
 // ── Build expanded transactions table for a category card ─────────────
-function buildCardTxList(catId, txns, catsMap) {
+// accountsMap: { accountId -> { name, type } } — used to resolve display names
+function buildCardTxList(catId, txns, catsMap, accountsMap) {
   const matching = txns.filter(tx => {
     const txCatId = tx.categoryId || "__none__";
     return txCatId === catId;
@@ -511,9 +513,10 @@ function buildCardTxList(catId, txns, catsMap) {
     const typeClass = isIncome ? "txn-type-badge--income" : "txn-type-badge--expense";
     const typeLabel = isIncome ? "Income" : "Expense";
     const amtSign = isIncome ? "" : "-";
-    // Render account as a link that navigates to accounts page with that account expanded
+    // Resolve account name: prefer accountsMap lookup, then stored accountName, then raw id
+    const resolvedAccountName = accountsMap?.[tx.accountId]?.name || tx.accountName || tx.accountId;
     const accountCellHtml = tx.accountId
-      ? `<button class="cat-link" data-account-id="${escHtml(tx.accountId)}" title="Go to account" type="button">${escHtml(tx.accountName || tx.accountId)}</button>`
+      ? `<button class="cat-link" data-account-id="${escHtml(tx.accountId)}" title="Go to account" type="button">${escHtml(resolvedAccountName)}</button>`
       : `<span>\u2014</span>`;
     return `
       <tr class="cat-card-tx__row">
@@ -897,10 +900,13 @@ export async function initCategoriesPage(_uid) {
   let _lastExpenseTotals = {};
   let _lastTxns          = [];
   let _lastCatsMap       = {};
+  let _lastAccountsMap   = {};
 
   async function refreshBreakdown() {
-    const catsMap = await getCategoriesMap(_uid);
-    _lastCatsMap = catsMap;
+    const catsMap    = await getCategoriesMap(_uid);
+    const accountsMap = await getAccountsMap(_uid);
+    _lastCatsMap     = catsMap;
+    _lastAccountsMap = accountsMap;
     const { incomeTotals, expenseTotals, txns } = await renderBreakdown(_uid, breakdownYear, breakdownMonth, catsMap);
     _lastIncomeTotals  = incomeTotals;
     _lastExpenseTotals = expenseTotals;
@@ -957,7 +963,7 @@ export async function initCategoriesPage(_uid) {
           card.setAttribute("aria-expanded", "true");
           const editRow = listEl.querySelector(`.js-cat-edit-row[data-id="${categoryId}"]`);
           const anchor = editRow || card;
-          const txListItem = buildCardTxList(categoryId, _lastTxns, _lastCatsMap);
+          const txListItem = buildCardTxList(categoryId, _lastTxns, _lastCatsMap, _lastAccountsMap);
           anchor.insertAdjacentElement("afterend", txListItem);
         }
         // Scroll the card into view
@@ -1040,7 +1046,7 @@ export async function initCategoriesPage(_uid) {
             card.setAttribute("aria-expanded", "true");
             const editRow = listEl.querySelector(`.js-cat-edit-row[data-id="${card.dataset.id}"]`);
             const anchor = editRow || card;
-            const txListItem = buildCardTxList(card.dataset.id, _lastTxns, _lastCatsMap);
+            const txListItem = buildCardTxList(card.dataset.id, _lastTxns, _lastCatsMap, _lastAccountsMap);
             anchor.insertAdjacentElement("afterend", txListItem);
           }
         });
