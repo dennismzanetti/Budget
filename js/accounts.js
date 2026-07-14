@@ -132,3 +132,231 @@ export async function populateAccountSelect(_uid, selectEl) {
     selectEl.innerHTML = '<option value="">Error loading accounts</option>';
   }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function fmtCurrency(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return "$0.00";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+}
+
+function fmtDate(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// ── Month navigation state ────────────────────────────────────────────
+const now = new Date();
+let acctYear  = now.getFullYear();
+let acctMonth = now.getMonth(); // 0-indexed
+
+function acctPeriodLabel() {
+  return new Date(acctYear, acctMonth, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function acctPeriodStart() { return new Date(acctYear, acctMonth, 1); }
+function acctPeriodEnd()   { return new Date(acctYear, acctMonth + 1, 1); }
+
+// ── Fetch ALL transactions for the current period ─────────────────────
+async function fetchTxForPeriod() {
+  try {
+    const txRef = collection(getDb(), "transactions");
+    const start = acctPeriodStart();
+    const end   = acctPeriodEnd();
+    const q = query(
+      txRef,
+      where("date", ">=", Timestamp.fromDate(start)),
+      where("date", "<",  Timestamp.fromDate(end)),
+      orderBy("date", "desc")
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error("[accounts] fetchTxForPeriod error:", err);
+    return [];
+  }
+}
+
+// ── Navigate to the categories page and expand the given category ─────
+function navigateToCategory(categoryId) {
+  window.location.hash = "categories";
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent("expand-category", { detail: { categoryId } }));
+  }, 300);
+}
+
+// ── Build expanded transaction list (mirrors categories buildCardTxList) ─
+function buildCardTxList(accountId, txns, catsMap) {
+  const matching = txns
+    .filter(tx => tx.accountId === accountId)
+    .sort((a, b) => {
+      const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+      const db = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+      return db - da;
+    });
+
+  const liWrap = document.createElement("li");
+  liWrap.className = "cat-breakdown__tx-list-row";
+  liWrap.dataset.txListFor = accountId;
+
+  if (matching.length === 0) {
+    liWrap.innerHTML = `<div class="cat-breakdown__tx-list cat-card-tx__wrapper"><div class="cat-breakdown__tx-empty">No transactions this period.</div></div>`;
+    return liWrap;
+  }
+
+  const rows = matching.map(tx => {
+    const dateStr = fmtDate(tx.date);
+    const amt     = parseFloat(tx.amount) || 0;
+    const amtCls  = amt < 0 ? "tx-amount--negative" : "tx-amount--positive";
+    const amtStr  = fmtCurrency(Math.abs(amt));
+    const sign    = amt < 0 ? "-" : "+";
+    const catName = catsMap[tx.categoryId]?.name || tx.categoryName || tx.categoryId || "—";
+    const memo    = escHtml(tx.memo || tx.description || "");
+    const catId   = tx.categoryId || "";
+
+    return `
+      <div class="cat-breakdown__tx-row" data-tx-id="${escHtml(tx.id)}">
+        <span class="tx-date">${escHtml(dateStr)}</span>
+        <span class="tx-memo">${memo || "&nbsp;"}</span>
+        <span class="tx-cat
+          ${catId ? " tx-cat--link" : ""}"
+          ${catId ? `data-cat-id="${escHtml(catId)}" title="Go to ${escHtml(catName)}"` : ""}
+        >${escHtml(catName)}</span>
+        <span class="tx-amount ${amtCls}">${sign}${amtStr}</span>
+      </div>`;
+  }).join("");
+
+  liWrap.innerHTML = `<div class="cat-breakdown__tx-list cat-card-tx__wrapper">${rows}</div>`;
+
+  liWrap.querySelectorAll(".tx-cat--link").forEach(el => {
+    el.addEventListener("click", () => navigateToCategory(el.dataset.catId));
+  });
+
+  return liWrap;
+}
+
+// ── Render account cards ──────────────────────────────────────────────
+function renderAccountCards(accounts, txns, catsMap, container) {
+  container.innerHTML = "";
+
+  const groups = {};
+  TYPE_ORDER.forEach(t => { groups[t] = []; });
+
+  accounts.forEach(acct => {
+    const t = acct.type || "other";
+    if (!groups[t]) groups[t] = [];
+    groups[t].push(acct);
+  });
+
+  TYPE_ORDER.forEach(type => {
+    const list = groups[type];
+    if (!list || list.length === 0) return;
+
+    const section = document.createElement("section");
+    section.className = "acct-type-section";
+    section.innerHTML = `<h3 class="acct-type-heading">${escHtml(TYPE_LABELS[type] ?? type)}</h3>`;
+
+    const ul = document.createElement("ul");
+    ul.className = "cat-breakdown__list";
+
+    list.forEach(acct => {
+      const acctTxns = txns.filter(tx => tx.accountId === acct.id);
+      const total = acctTxns.reduce((s, tx) => s + (parseFloat(tx.amount) || 0), 0);
+      const isAsset = ASSET_TYPES.includes(acct.type);
+      const amtCls = isAsset
+        ? (total >= 0 ? "tx-amount--positive" : "tx-amount--negative")
+        : (total <= 0 ? "tx-amount--negative" : "tx-amount--positive");
+
+      const li = document.createElement("li");
+      li.className = "cat-breakdown__item";
+      li.dataset.acctId = acct.id;
+      li.innerHTML = `
+        <div class="cat-breakdown__row cat-breakdown__row--clickable">
+          <span class="cat-breakdown__name">${escHtml(acct.name)}</span>
+          <span class="cat-breakdown__amount ${amtCls}">${fmtCurrency(total)}</span>
+          <span class="cat-breakdown__toggle-icon">▶</span>
+        </div>`;
+
+      li.querySelector(".cat-breakdown__row--clickable").addEventListener("click", () => {
+        const existing = ul.querySelector(`[data-tx-list-for="${acct.id}"]`);
+        if (existing) {
+          existing.remove();
+          li.querySelector(".cat-breakdown__toggle-icon").textContent = "▶";
+          return;
+        }
+        li.querySelector(".cat-breakdown__toggle-icon").textContent = "▼";
+        const txList = buildCardTxList(acct.id, txns, catsMap);
+        li.after(txList);
+      });
+
+      ul.appendChild(li);
+    });
+
+    section.appendChild(ul);
+    container.appendChild(section);
+  });
+}
+
+// ── Totals bar ────────────────────────────────────────────────────────
+function renderTotalsBar(accounts, txns, container) {
+  if (!container) return;
+
+  const totalIncome  = txns.filter(tx => (parseFloat(tx.amount) || 0) > 0).reduce((s, tx) => s + parseFloat(tx.amount), 0);
+  const totalExpense = txns.filter(tx => (parseFloat(tx.amount) || 0) < 0).reduce((s, tx) => s + parseFloat(tx.amount), 0);
+  const net = totalIncome + totalExpense;
+  const netCls = net >= 0 ? "tx-amount--positive" : "tx-amount--negative";
+
+  container.innerHTML = `
+    <div class="acct-totals__row">
+      <span class="acct-totals__label">Income</span>
+      <span class="acct-totals__amount tx-amount--positive">${fmtCurrency(totalIncome)}</span>
+    </div>
+    <div class="acct-totals__row">
+      <span class="acct-totals__label">Expenses</span>
+      <span class="acct-totals__amount tx-amount--negative">${fmtCurrency(Math.abs(totalExpense))}</span>
+    </div>
+    <div class="acct-totals__row acct-totals__row--net">
+      <span class="acct-totals__label">Net</span>
+      <span class="acct-totals__amount ${netCls}">${fmtCurrency(net)}</span>
+    </div>`;
+}
+
+// ── Main page init ────────────────────────────────────────────────────
+export async function initAccountsPage(uid) {
+  const container   = document.getElementById("accounts-breakdown");
+  const periodLabel = document.getElementById("acct-period-label");
+  const prevBtn     = document.getElementById("acct-prev-month");
+  const nextBtn     = document.getElementById("acct-next-month");
+  const totalsBar   = document.getElementById("acct-totals-bar");
+
+  if (!container) return;
+
+  async function refresh() {
+    if (periodLabel) periodLabel.textContent = acctPeriodLabel();
+    container.innerHTML = '<div class="cat-breakdown__loading">Loading\u2026</div>';
+
+    try {
+      const [accounts, txns, catsMap] = await Promise.all([
+        fetchAccounts(),
+        fetchTxForPeriod(),
+        getCategoriesMap(uid),
+      ]);
+      updateAccountsBadge(accounts);
+      renderTotalsBar(accounts, txns, totalsBar);
+      renderAccountCards(accounts, txns, catsMap, container);
+    } catch (err) {
+      console.error("[accounts] refresh error:", err);
+      container.innerHTML = '<div class="cat-breakdown__error">Error loading accounts.</div>';
+    }
+  }
+
+  prevBtn?.addEventListener("click", () => { acctMonth--; if (acctMonth < 0) { acctMonth = 11; acctYear--; } refresh(); });
+  nextBtn?.addEventListener("click", () => { acctMonth++; if (acctMonth > 11) { acctMonth = 0; acctYear++; } refresh(); });
+
+  await refresh();
+}
