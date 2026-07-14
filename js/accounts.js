@@ -13,7 +13,6 @@ import {
   getFirestore, collection, getDocs, addDoc, updateDoc,
   deleteDoc, doc, getDoc, setDoc, serverTimestamp, query, orderBy, where, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getCategoriesMap } from "./categories.js";
 
 let _db = null;
 function getDb() {
@@ -58,6 +57,16 @@ async function fetchAccounts() {
   const q = query(accountsRef(), orderBy("createdAt"));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Local lightweight categories map — avoids circular import with categories.js
+async function fetchCategoriesMap() {
+  const snap = await getDocs(query(collection(getDb(), "categories"), orderBy("name")));
+  const map = {};
+  snap.docs.forEach(d => {
+    map[d.id] = { name: d.data().name, color: d.data().color, emoji: d.data().emoji };
+  });
+  return map;
 }
 
 // ── Nav badge ─────────────────────────────────────────────────────────
@@ -344,7 +353,7 @@ export async function initAccountsPage(uid) {
       const [accounts, txns, catsMap] = await Promise.all([
         fetchAccounts(),
         fetchTxForPeriod(),
-        getCategoriesMap(uid),
+        fetchCategoriesMap(),
       ]);
       updateAccountsBadge(accounts);
       renderTotalsBar(accounts, txns, totalsBar);
