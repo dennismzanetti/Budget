@@ -46,6 +46,9 @@ export const TYPE_LABELS = {
 // Order in which type groups appear
 const TYPE_ORDER = ["checking", "savings", "credit", "investment", "mortgage", "vehicle_loan", "other"];
 
+// Asset types show amount in green; liability types in red
+const ASSET_TYPES = ["checking", "savings", "investment"];
+
 function accountsRef() {
   return collection(getDb(), "accounts");
 }
@@ -241,17 +244,19 @@ const ICON_CHEVRON = `<svg class="cat-card__chevron" width="16" height="16" view
 function renderCard(a, periodTotal) {
   const typeLabel = TYPE_LABELS[a.type] ?? a.type;
   const hasPeriodTotal = periodTotal !== undefined && periodTotal > 0;
+  const amtColorClass = ASSET_TYPES.includes(a.type)
+    ? "account-card__amount--income"
+    : "account-card__amount--expense";
+  const amtHtml = hasPeriodTotal
+    ? `<span class="account-card__amount ${amtColorClass}">${fmtCurrency(periodTotal)}</span>`
+    : `<span class="account-card__amount account-card__amount--empty">\u2014</span>`;
+
   return `
     <li class="account-card account-card--expandable" data-id="${a.id}" role="button" tabindex="0" aria-expanded="false">
-      <div class="account-card__info">
-        <span class="account-card__name">${escHtml(a.name)}</span>
-        <span class="account-card__type">${escHtml(typeLabel)}</span>
-        ${ICON_CHEVRON}
-      </div>
-      <div class="account-card__meta">
-        ${a.institution ? `<span class="account-card__institution">${escHtml(a.institution)}</span>` : ""}
-        ${hasPeriodTotal ? `<span class="account-card__period-total">${fmtCurrency(periodTotal)}</span>` : ""}
-      </div>
+      ${ICON_CHEVRON}
+      <span class="account-card__name">${escHtml(a.name)}</span>
+      <span class="account-card__type">${escHtml(typeLabel)}</span>
+      ${amtHtml}
       <div class="account-card__actions">
         <button class="btn btn-ghost btn-sm js-edit-account" data-id="${a.id}" title="Edit account" aria-label="Edit account">${ICON_EDIT}</button>
         <button class="btn btn-ghost btn-sm js-delete-account" data-id="${a.id}" title="Delete account" aria-label="Delete account">${ICON_DELETE}</button>
