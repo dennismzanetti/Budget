@@ -511,11 +511,16 @@ function buildCardTxList(catId, txns, catsMap) {
     const typeClass = isIncome ? "txn-type-badge--income" : "txn-type-badge--expense";
     const typeLabel = isIncome ? "Income" : "Expense";
     const amtSign = isIncome ? "" : "-";
+    // Render account as a link that navigates to accounts page with that account expanded
+    const accountCellHtml = tx.accountId
+      ? `<button class="cat-link" data-account-id="${escHtml(tx.accountId)}" title="Go to account" type="button">${escHtml(tx.accountName || tx.accountId)}</button>`
+      : `<span>\u2014</span>`;
     return `
       <tr class="cat-card-tx__row">
         <td class="cat-card-tx__date">${escHtml(fmtDate(tx.date))}</td>
         <td class="cat-card-tx__payee" title="${escHtml(payee)}">${escHtml(payee)}</td>
         <td class="cat-card-tx__category">${escHtml(catLabel)}</td>
+        <td class="cat-card-tx__account">${accountCellHtml}</td>
         <td class="cat-card-tx__type">
           <span class="txn-type-badge ${typeClass}">${typeLabel}</span>
         </td>
@@ -531,6 +536,7 @@ function buildCardTxList(catId, txns, catsMap) {
             <th class="cat-card-tx__th">Date</th>
             <th class="cat-card-tx__th">Payee</th>
             <th class="cat-card-tx__th">Category</th>
+            <th class="cat-card-tx__th">Account</th>
             <th class="cat-card-tx__th">Type</th>
             <th class="cat-card-tx__th cat-card-tx__th--amount">Amount</th>
           </tr>
@@ -538,6 +544,18 @@ function buildCardTxList(catId, txns, catsMap) {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+
+  // Wire up account links — navigate to accounts page with that account expanded
+  liWrap.querySelectorAll(".cat-link[data-account-id]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const accountId = btn.dataset.accountId;
+      window.location.hash = "accounts";
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("expand-account", { detail: { accountId } }));
+      }, 300);
+    });
+  });
 
   return liWrap;
 }
@@ -910,6 +928,46 @@ export async function initCategoriesPage(_uid) {
     addErrEl.textContent = "";
     addErrEl.classList.add("hidden");
   }
+
+  // ── expand-category event: expand a specific category card ────────────
+  // Fired by accounts.js when the user clicks a category link in a transaction row.
+  function handleExpandCategory(e) {
+    const { categoryId } = e.detail || {};
+    if (!categoryId) return;
+    // Wait for renderList to finish (it may still be in progress on first load)
+    // Use a small poll to find and expand the card once it's in the DOM
+    let attempts = 0;
+    const tryExpand = () => {
+      const card = listEl.querySelector(`.account-card--expandable[data-id="${categoryId}"]`);
+      if (card) {
+        // Collapse any already-expanded card first
+        listEl.querySelectorAll(".account-card--expandable.is-expanded").forEach(open => {
+          if (open !== card) {
+            open.classList.remove("is-expanded");
+            open.setAttribute("aria-expanded", "false");
+            const existing = listEl.querySelector(`.cat-breakdown__tx-list-row[data-tx-list-for="${open.dataset.id}"]`);
+            if (existing) existing.remove();
+          }
+        });
+        // Expand the target card if not already expanded
+        if (!card.classList.contains("is-expanded")) {
+          card.classList.add("is-expanded");
+          card.setAttribute("aria-expanded", "true");
+          const editRow = listEl.querySelector(`.js-cat-edit-row[data-id="${categoryId}"]`);
+          const anchor = editRow || card;
+          const txListItem = buildCardTxList(categoryId, _lastTxns, _lastCatsMap);
+          anchor.insertAdjacentElement("afterend", txListItem);
+        }
+        // Scroll the card into view
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (attempts++ < 10) {
+        setTimeout(tryExpand, 150);
+      }
+    };
+    tryExpand();
+  }
+
+  window.addEventListener("expand-category", handleExpandCategory);
 
   async function renderList() {
     listEl.innerHTML = '<li class="accounts-loading">Loading\u2026</li>';
