@@ -20,14 +20,14 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
-      <button class="cat-breakdown__toggle" id="catBreakdownToggle" aria-expanded="true" aria-controls="catBreakdownCharts" aria-label="Toggle charts">
+      <button class="cat-breakdown__toggle" id="catBreakdownToggle" aria-expanded="false" aria-controls="catBreakdownCharts" aria-label="Toggle charts">
         <span class="cat-breakdown__toggle-label">Charts</span>
         <svg class="cat-breakdown__toggle-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
     </div>
 
     <!-- Collapsible charts body -->
-    <div class="cat-breakdown__charts" id="catBreakdownCharts">
+    <div class="cat-breakdown__charts is-collapsed" id="catBreakdownCharts">
       <!-- Income card -->
       <div class="cat-breakdown__card cat-breakdown__card--income">
         <div class="cat-breakdown__card-title">Income</div>
