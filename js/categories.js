@@ -601,11 +601,13 @@ function buildCardTxList(catId, txns, catsMap) {
       ? tx.amountCents / 100
       : Math.abs(parseFloat(tx.amount) || 0);
     const payee = tx.payee || tx.description || "";
+    const accountLabel = tx.accountName || (tx.accountId ? tx.accountId : "\u2014");
     const li = document.createElement("li");
     li.className = "cat-breakdown__tx-item";
     li.innerHTML = `
       <span class="cat-breakdown__tx-date">${escHtml(fmtDate(tx.date))}</span>
       <span class="cat-breakdown__tx-payee" title="${escHtml(payee)}">${escHtml(payee)}</span>
+      <span class="cat-breakdown__tx-account">${escHtml(accountLabel)}</span>
       <span class="cat-breakdown__tx-amount ${amtClass}">${fmtCurrency(absAmt)}</span>`;
     ul.appendChild(li);
   });
