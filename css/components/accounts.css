@@ -539,6 +539,12 @@ html[data-theme="dark"] .account-delete-confirm-btn:hover {
   white-space: nowrap;
 }
 
+.cat-card-tx__account {
+  padding: 7px 10px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
 .cat-card-tx__amount {
   padding: 7px 10px;
   font-weight: 600;
@@ -563,7 +569,8 @@ html[data-theme="dark"] .cat-card-tx__amount--expense {
 
 @media (max-width: 640px) {
   .cat-card-tx__category,
-  .cat-card-tx__type {
+  .cat-card-tx__type,
+  .cat-card-tx__account {
     display: none;
   }
 }
