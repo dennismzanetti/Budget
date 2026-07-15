@@ -1,20 +1,47 @@
 <section class="page" id="dashboard">
   <h2 class="page-title">Dashboard</h2>
-  <div class="dashboard-grid">
-    <article class="card">
-      <p class="eyebrow">Budget</p>
-      <h3>Category targets</h3>
-      <p class="subtle">Placeholder for groceries, utilities, mortgage, and subscriptions.</p>
+
+  <!-- KPI Row -->
+  <div class="dash-kpi-row">
+    <article class="dash-kpi-card">
+      <p class="dash-kpi-label">Income This Month</p>
+      <p class="dash-kpi-value dash-kpi-value--income" id="dashKpiIncome">—</p>
     </article>
-    <article class="card">
-      <p class="eyebrow">Transactions</p>
-      <h3>Recent activity</h3>
-      <p class="subtle">Placeholder for imported or manual transactions.</p>
+    <article class="dash-kpi-card">
+      <p class="dash-kpi-label">Expenses This Month</p>
+      <p class="dash-kpi-value dash-kpi-value--expense" id="dashKpiExpenses">—</p>
     </article>
-    <article class="card">
-      <p class="eyebrow">Reporting</p>
-      <h3>Monthly summary</h3>
-      <p class="subtle">Placeholder for totals, trends, and cash flow summaries.</p>
+    <article class="dash-kpi-card">
+      <p class="dash-kpi-label">Net Cash Flow</p>
+      <p class="dash-kpi-value" id="dashKpiNet">—</p>
     </article>
+    <article class="dash-kpi-card">
+      <p class="dash-kpi-label">Transactions</p>
+      <p class="dash-kpi-value" id="dashKpiCount">—</p>
+    </article>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="dash-recent-wrap">
+    <div class="dash-recent-header">
+      <h3>Recent Transactions</h3>
+      <a href="#transactions" class="dash-view-all">View all</a>
+    </div>
+    <div class="dash-recent-table-wrap">
+      <table class="dash-recent-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Payee</th>
+            <th class="dash-hide-mobile">Account</th>
+            <th class="dash-hide-mobile">Category</th>
+            <th class="dash-amount-col">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="dashRecentTbody">
+          <tr><td colspan="5" class="dash-loading">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>

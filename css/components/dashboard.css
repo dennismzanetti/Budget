@@ -1,0 +1,146 @@
+/* ── Dashboard KPI Row ─────────────────────────────────────────── */
+.dash-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.dash-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dash-kpi-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.dash-kpi-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.15;
+}
+
+.dash-kpi-value--income  { color: #16a34a; }
+.dash-kpi-value--expense { color: #dc2626; }
+
+html[data-theme="dark"] .dash-kpi-value--income  { color: #4ade80; }
+html[data-theme="dark"] .dash-kpi-value--expense { color: #f87171; }
+
+/* ── Recent Transactions ───────────────────────────────────────── */
+.dash-recent-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.dash-recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dash-recent-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dash-view-all {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--primary);
+  text-decoration: none;
+}
+.dash-view-all:hover { text-decoration: underline; }
+
+.dash-recent-table-wrap {
+  overflow-x: auto;
+}
+
+.dash-recent-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.dash-recent-table thead th {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.dash-recent-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 150ms ease;
+}
+.dash-recent-table tbody tr:last-child { border-bottom: none; }
+.dash-recent-table tbody tr:hover { background: var(--surface-2); }
+
+.dash-recent-table td {
+  padding: 0.7rem 1rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.dash-col-date     { color: var(--muted); font-size: 0.8rem; width: 80px; }
+.dash-col-payee    { font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.dash-col-account  { color: var(--muted); font-size: 0.82rem; }
+.dash-col-category { color: var(--muted); font-size: 0.82rem; }
+.dash-col-amount   { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.dash-amount--col  { text-align: right; }
+.dash-amount--income  { color: #16a34a; }
+.dash-amount--expense { color: var(--text); }
+
+html[data-theme="dark"] .dash-amount--income { color: #4ade80; }
+
+.dash-loading, .dash-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dash-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-hide-mobile { display: none; }
+  .dash-kpi-value { font-size: 1.3rem; }
+}
+
+@media (max-width: 420px) {
+  .dash-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+  .dash-kpi-card { padding: 0.85rem 0.9rem; }
+}

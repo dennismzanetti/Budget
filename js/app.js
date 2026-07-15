@@ -16,6 +16,7 @@ import { initCategoriesPage, refreshCategoriesPage } from "./categories.js";
 import { initImportPage, refreshImportPage } from "./bofa-import-page.js";
 import { initBudgetsPage, refreshBudgetsPage } from "./budgets.js";
 import { initReportsPage, refreshReportsPage } from "./reports.js";
+import { initDashboardPage, refreshDashboardPage } from "./dashboard.js";
 
 
 const firebaseConfig = {
@@ -94,6 +95,7 @@ function updateUI(user) {
   initImportPage();
   initBudgetsPage();
   initReportsPage();
+  initDashboardPage(user.uid);
 }
 
 function initAuth() {
@@ -107,6 +109,7 @@ window.addEventListener('hashchange', () => {
    if (getPage() === 'import')       refreshImportPage();
    if (getPage() === 'budget')       refreshBudgetsPage();
    if (getPage() === 'reports')      refreshReportsPage();
+   if (getPage() === 'dashboard')    refreshDashboardPage();
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
