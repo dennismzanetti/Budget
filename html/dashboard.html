@@ -27,8 +27,8 @@
     </article>
   </div>
 
-  <!-- Charts Row: Donut -->
-  <div class="dash-charts-row">
+  <!-- Charts Row: Donut + Trend -->
+  <div class="dash-charts-row dash-charts-row--two">
     <div class="dash-chart-wrap">
       <div class="dash-chart-header">
         <h3>Spending by Category</h3>
@@ -38,6 +38,15 @@
         <div class="dash-donut-center" id="dashDonutCenter"></div>
       </div>
       <div id="dashCategoryLegend" class="dash-category-legend"></div>
+    </div>
+
+    <div class="dash-chart-wrap">
+      <div class="dash-chart-header">
+        <h3>6-Month Trend</h3>
+      </div>
+      <div class="dash-trend-container">
+        <canvas id="dashTrendChart"></canvas>
+      </div>
     </div>
   </div>
 
