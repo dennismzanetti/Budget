@@ -856,6 +856,11 @@ function renderDeleteConfirm(id) {
     </li>`;
 }
 
+let _refreshCategoriesPage = null;
+export function refreshCategoriesPage() {
+  if (_refreshCategoriesPage) _refreshCategoriesPage();
+}
+
 // ── Categories Page UI ────────────────────────────────────────────
 export async function initCategoriesPage(_uid) {
   const listEl    = document.getElementById("categoriesList");
@@ -1192,5 +1197,7 @@ export async function initCategoriesPage(_uid) {
     });
   }
 
-  await refreshBreakdown();
+  _refreshCategoriesPage = refreshBreakdown;
+   await refreshBreakdown();
+
 }

@@ -6,16 +6,13 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { initNav, navigateTo, getPage } from "./nav.js";
-import { loadCommits } from "./commits.js";
-import { seedAccountsIfEmpty, initAccountsPage } from "./accounts.js";
-import { initTransactionsPage } from "./transactions.js";
-import { initCategoriesPage } from "./categories.js";
-import { initImportPage } from "./bofa-import-page.js";
-import { initBudgetsPage } from "./budgets.js";
-import { initReportsPage } from "./reports.js";
-import { loadPartials } from "./partials.js";
+import { seedAccountsIfEmpty, initAccountsPage, refreshAccountsPage } from "./accounts.js";
+import { initTransactionsPage, refreshTransactionsPage } from "./transactions.js";
+import { initCategoriesPage, refreshCategoriesPage } from "./categories.js";
+import { initImportPage, refreshImportPage } from "./bofa-import-page.js";
+import { initBudgetsPage, refreshBudgetsPage } from "./budgets.js";
+import { initReportsPage, refreshReportsPage } from "./reports.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1bezOLjTbb-3sfI1BBqKqBDifPlxnqYQ",
@@ -91,12 +88,8 @@ function updateUI(user) {
   initCategoriesPage(user.uid);
   initTransactionsPage(user.uid);
   initImportPage();
-
-  if (getPage() === 'accounts')     initAccountsPage(user.uid);
-  if (getPage() === 'transactions') initTransactionsPage(user.uid);
-  if (getPage() === 'import')       initImportPage();
-  if (getPage() === 'budget')       initBudgetsPage();
-  if (getPage() === 'reports')      initReportsPage();
+  initBudgetsPage();
+  initReportsPage();
 }
 
 function initAuth() {
@@ -104,13 +97,12 @@ function initAuth() {
 }
 
 window.addEventListener('hashchange', () => {
-  if (getPage() === 'settings')     loadCommits();
-  if (getPage() === 'accounts')     initAccountsPage(auth.currentUser?.uid);
-  if (getPage() === 'transactions') initTransactionsPage(auth.currentUser?.uid);
-  if (getPage() === 'categories')   initCategoriesPage(auth.currentUser?.uid);
-  if (getPage() === 'import')       initImportPage();
-  if (getPage() === 'budget')       initBudgetsPage();
-  if (getPage() === 'reports')      initReportsPage();
+   if (getPage() === 'accounts')     refreshAccountsPage();
+   if (getPage() === 'transactions') refreshTransactionsPage();
+   if (getPage() === 'categories')   refreshCategoriesPage();
+   if (getPage() === 'import')       refreshImportPage();
+   if (getPage() === 'budget')       refreshBudgetsPage();
+   if (getPage() === 'reports')      refreshReportsPage();
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────

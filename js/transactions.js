@@ -65,6 +65,10 @@ function hasActiveFilters(acctFilter, catFilter, typeFilter, dateFrom, dateTo, s
   return !!((acctFilter?.value) || (catFilter?.value) || (typeFilter?.value) ||
     (dateFrom?.value) || (dateTo?.value) || (searchInput?.value.trim()));
 }
+let _refreshTransactionsPage = null;
+export function refreshTransactionsPage() {
+  if (_refreshTransactionsPage) _refreshTransactionsPage();
+}
 
 export async function initTransactionsPage(_uid) {
   console.debug("[txn] initTransactionsPage called, uid:", _uid);
@@ -369,5 +373,7 @@ export async function initTransactionsPage(_uid) {
     renderTable();
   });
 
-  await loadTransactions();
+   _refreshTransactionsPage = loadTransactions;
+   await loadTransactions();
+
 }

@@ -405,4 +405,10 @@ function _initControls() {
   yearSelect?.addEventListener("change", renderReports);
 
   renderReports();
+
+  // ── Lightweight refresh (called on every navigation) ──────────────────────
+  export function refreshReportsPage() {
+    renderReports();
+}
+
 }

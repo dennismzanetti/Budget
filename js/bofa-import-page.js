@@ -16,6 +16,8 @@
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { importBofAFile } from "./import.js";
 import { populateAccountSelect } from "./accounts.js";
+export function refreshImportPage() { /* no data to re-fetch */ }
+
 
 // ── File selection helpers ────────────────────────────────────────────
 function formatBytes(bytes) {
