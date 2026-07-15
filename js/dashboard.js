@@ -140,7 +140,6 @@ export async function initDashboardPage(uid) {
     if (budgetProgressEl) {
       try {
         const actuals = await buildBudgetActuals(period);
-        // Only expense rows that have a budget defined
         const budgetRows = actuals.filter(r => r.type === "expense" && r.hasBudget);
 
         if (budgetRows.length === 0) {
@@ -150,35 +149,35 @@ export async function initDashboardPage(uid) {
               <a href="#budgets" class="dash-view-all" style="margin-left:0.4rem">Add budgets →</a>
             </p>`;
         } else {
-          // Sort: over-budget first, then by % used desc
           budgetRows.sort((a, b) => {
             if (a.isOverBudget !== b.isOverBudget) return a.isOverBudget ? -1 : 1;
             return b.percentUsed - a.percentUsed;
           });
 
           budgetProgressEl.innerHTML = budgetRows.map(r => {
-            const pct        = Math.min(r.percentUsed, 100);
-            const isOver     = r.isOverBudget;
-            const isWarn     = !isOver && r.percentUsed >= 75;
+            const pct         = Math.min(r.percentUsed, 100);
+            const isOver      = r.isOverBudget;
+            const isWarn      = !isOver && r.percentUsed >= 75;
             const statusClass = isOver ? "dash-bp-bar--over" : isWarn ? "dash-bp-bar--warn" : "dash-bp-bar--ok";
+            const spentClass  = isOver ? "dash-bp-spent dash-bp-spent--over" : "dash-bp-spent";
+            const pctClass    = isOver ? "dash-bp-pct dash-bp-pct--over" : "dash-bp-pct";
             const emoji       = r.categoryEmoji ? escHtml(r.categoryEmoji) + " " : "";
             const pctLabel    = r.percentUsed > 0 ? Math.round(r.percentUsed) + "%" : "0%";
 
-            return `
-              <div class="dash-bp-row">
-                <div class="dash-bp-labels">
-                  <span class="dash-bp-name">${emoji}${escHtml(r.categoryName)}</span>
-                  <span class="dash-bp-amounts">
-                    <span class="dash-bp-spent ${isOver ? "dash-bp-spent--over" : "}">${escHtml(fmtDollars(r.actualAmountCents))}</span>
-                    <span class="dash-bp-sep">/</span>
-                    <span class="dash-bp-budget">${escHtml(fmtDollars(r.budgetAmountCents))}</span>
-                    <span class="dash-bp-pct ${isOver ? "dash-bp-pct--over" : ""}"> &middot; ${escHtml(pctLabel)}</span>
-                  </span>
-                </div>
-                <div class="dash-bp-track">
-                  <div class="dash-bp-bar ${statusClass}" style="width:${pct.toFixed(1)}%"></div>
-                </div>
-              </div>`;
+            return `<div class="dash-bp-row">
+              <div class="dash-bp-labels">
+                <span class="dash-bp-name">${emoji}${escHtml(r.categoryName)}</span>
+                <span class="dash-bp-amounts">
+                  <span class="${spentClass}">${escHtml(fmtDollars(r.actualAmountCents))}</span>
+                  <span class="dash-bp-sep">/</span>
+                  <span class="dash-bp-budget">${escHtml(fmtDollars(r.budgetAmountCents))}</span>
+                  <span class="${pctClass}"> &middot; ${escHtml(pctLabel)}</span>
+                </span>
+              </div>
+              <div class="dash-bp-track">
+                <div class="dash-bp-bar ${statusClass}" style="width:${pct.toFixed(1)}%"></div>
+              </div>
+            </div>`;
           }).join("");
         }
       } catch (e) {
