@@ -1,5 +1,11 @@
 <section class="page" id="dashboard">
-  <h2 class="page-title">Dashboard</h2>
+  <div class="dash-page-header">
+    <h2 class="page-title">Dashboard</h2>
+    <div class="dash-month-selector-wrap">
+      <label for="dashMonthSelect" class="dash-month-label">Month</label>
+      <select id="dashMonthSelect" class="dash-month-select"></select>
+    </div>
+  </div>
 
   <!-- KPI Row -->
   <div class="dash-kpi-row">
@@ -19,6 +25,20 @@
       <p class="dash-kpi-label">Transactions</p>
       <p class="dash-kpi-value" id="dashKpiCount">—</p>
     </article>
+  </div>
+
+  <!-- Charts Row: Donut -->
+  <div class="dash-charts-row">
+    <div class="dash-chart-wrap">
+      <div class="dash-chart-header">
+        <h3>Spending by Category</h3>
+      </div>
+      <div class="dash-donut-container">
+        <canvas id="dashCategoryChart"></canvas>
+        <div class="dash-donut-center" id="dashDonutCenter"></div>
+      </div>
+      <div id="dashCategoryLegend" class="dash-category-legend"></div>
+    </div>
   </div>
 
   <!-- Budget Progress Bars -->

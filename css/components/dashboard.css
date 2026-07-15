@@ -1,3 +1,45 @@
+/* ── Dashboard Page Header (title + month selector) ───────────────────── */
+.dash-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.dash-page-header .page-title {
+  margin-bottom: 0;
+}
+
+.dash-month-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dash-month-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.dash-month-select {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+.dash-month-select:hover  { border-color: var(--primary); }
+.dash-month-select:focus  { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 /* ── Dashboard KPI Row ─────────────────────────────────────────────────── */
 .dash-kpi-row {
   display: grid;
@@ -41,6 +83,119 @@
 html[data-theme="dark"] .dash-kpi-value--income  { color: #4ade80; }
 html[data-theme="dark"] .dash-kpi-value--expense { color: #f87171; }
 
+/* ── Charts Row ───────────────────────────────────────────────────────── */
+.dash-charts-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dash-chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.dash-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dash-chart-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Donut chart layout */
+.dash-donut-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 1.5rem auto 0.75rem;
+}
+
+.dash-donut-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.dash-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.dash-donut-total {
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.dash-donut-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Category legend grid */
+.dash-category-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.4rem 1.25rem;
+  padding: 0.75rem 1.25rem 1.25rem;
+}
+
+.dash-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.dash-legend-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+}
+
+.dash-legend-name {
+  font-size: 0.8rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.dash-legend-pct {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* ── Budget Progress Bars ────────────────────────────────────────── */
 .dash-budget-progress-wrap {
   background: var(--surface);
@@ -73,7 +228,6 @@ html[data-theme="dark"] .dash-kpi-value--expense { color: #f87171; }
   gap: 0.85rem;
 }
 
-/* Each category row */
 .dash-bp-row {
   display: flex;
   flex-direction: column;
@@ -108,37 +262,15 @@ html[data-theme="dark"] .dash-kpi-value--expense { color: #f87171; }
   white-space: nowrap;
 }
 
-.dash-bp-spent {
-  font-weight: 600;
-  color: var(--text);
-}
+.dash-bp-spent            { font-weight: 600; color: var(--text); }
+.dash-bp-spent--over      { color: #dc2626; }
+.dash-bp-budget           { color: var(--muted); }
+.dash-bp-pct              { color: var(--muted); }
+.dash-bp-pct--over        { color: #dc2626; font-weight: 600; }
 
-.dash-bp-spent--over {
-  color: #dc2626;
-}
+html[data-theme="dark"] .dash-bp-spent--over { color: #f87171; }
+html[data-theme="dark"] .dash-bp-pct--over   { color: #f87171; }
 
-html[data-theme="dark"] .dash-bp-spent--over {
-  color: #f87171;
-}
-
-.dash-bp-budget {
-  color: var(--muted);
-}
-
-.dash-bp-pct {
-  color: var(--muted);
-}
-
-.dash-bp-pct--over {
-  color: #dc2626;
-  font-weight: 600;
-}
-
-html[data-theme="dark"] .dash-bp-pct--over {
-  color: #f87171;
-}
-
-/* Track + bar */
 .dash-bp-track {
   height: 8px;
   background: var(--surface-2, #f3f0ec);
@@ -194,9 +326,7 @@ html[data-theme="dark"] .dash-bp-bar--over { background: #f87171; }
 }
 .dash-view-all:hover { text-decoration: underline; }
 
-.dash-recent-table-wrap {
-  overflow-x: auto;
-}
+.dash-recent-table-wrap { overflow-x: auto; }
 
 .dash-recent-table {
   width: 100%;
@@ -236,7 +366,7 @@ html[data-theme="dark"] .dash-bp-bar--over { background: #f87171; }
 .dash-col-category { color: var(--muted); font-size: 0.82rem; }
 .dash-col-amount   { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.dash-amount--col  { text-align: right; }
+.dash-amount--col     { text-align: right; }
 .dash-amount--income  { color: #16a34a; }
 .dash-amount--expense { color: var(--text); }
 
@@ -251,21 +381,20 @@ html[data-theme="dark"] .dash-amount--income { color: #4ade80; }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .dash-kpi-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .dash-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dash-hide-mobile { display: none; }
   .dash-kpi-value { font-size: 1.3rem; }
   .dash-bp-name { max-width: 45%; }
+  .dash-donut-container { width: 180px; height: 180px; }
+  .dash-category-legend { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 420px) {
-  .dash-kpi-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.6rem;
-  }
+  .dash-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
   .dash-kpi-card { padding: 0.85rem 0.9rem; }
   .dash-budget-progress-body { padding: 0.85rem 0.9rem; }
   .dash-bp-name { max-width: 100%; }
   .dash-bp-labels { flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+  .dash-page-header { flex-direction: column; align-items: flex-start; }
+  .dash-category-legend { grid-template-columns: 1fr; }
 }

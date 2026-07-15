@@ -1,5 +1,6 @@
 /**
- * dashboard.js — Dashboard page: KPI row + budget progress bars + recent transactions
+ * dashboard.js — Dashboard page: month selector + KPI row + category donut chart
+ *               + budget progress bars + recent transactions
  *
  * Exports:
  *   initDashboardPage(uid)
@@ -33,13 +34,34 @@ function fmtDollars(cents) {
   return "$" + (Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function currentPeriod() {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  return now.getFullYear() + "-" + mm;
+/** Returns YYYY-MM for a given year+month (0-indexed month) */
+function toPeriod(year, month) {
+  return year + "-" + String(month + 1).padStart(2, "0");
 }
 
-/** Build HTML for a single budget progress row — uses concatenation to avoid nested template literal issues */
+/** Populate the month selector with last 12 months, default = current month */
+function buildMonthOptions(selectEl) {
+  const now = new Date();
+  selectEl.innerHTML = "";
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = toPeriod(d.getFullYear(), d.getMonth());
+    const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    selectEl.appendChild(opt);
+  }
+}
+
+/** Chart.js palette — distinct colours that work in light & dark */
+const CHART_COLORS = [
+  "#01696f", "#d97706", "#7c3aed", "#db2777", "#2563eb",
+  "#059669", "#dc2626", "#0891b2", "#65a30d", "#9333ea",
+  "#f59e0b", "#ef4444", "#06b6d4", "#84cc16", "#ec4899"
+];
+
+/** Build HTML for a single budget progress row */
 function buildBudgetRow(r) {
   const pct         = Math.min(r.percentUsed, 100);
   const isOver      = r.isOverBudget;
@@ -71,6 +93,7 @@ function buildBudgetRow(r) {
 
 let _uid = null;
 let _refresh = null;
+let _chartInstance = null;
 
 export function refreshDashboardPage() {
   if (_refresh) _refresh();
@@ -82,6 +105,10 @@ export async function initDashboardPage(uid) {
   const page = document.getElementById("dashboard");
   if (!page) return;
 
+  // Month selector
+  const monthSelect = document.getElementById("dashMonthSelect");
+  if (monthSelect) buildMonthOptions(monthSelect);
+
   // DOM refs
   const kpiIncome        = document.getElementById("dashKpiIncome");
   const kpiExpenses      = document.getElementById("dashKpiExpenses");
@@ -89,12 +116,22 @@ export async function initDashboardPage(uid) {
   const kpiCount         = document.getElementById("dashKpiCount");
   const tbody            = document.getElementById("dashRecentTbody");
   const budgetProgressEl = document.getElementById("dashBudgetProgress");
+  const chartCanvas      = document.getElementById("dashCategoryChart");
+  const legendEl         = document.getElementById("dashCategoryLegend");
+  const donutCenter      = document.getElementById("dashDonutCenter");
 
   async function load() {
+    const selectedPeriod = monthSelect ? monthSelect.value : toPeriod(new Date().getFullYear(), new Date().getMonth());
+    const [selYear, selMonth] = selectedPeriod.split("-").map(Number);
+    const monthStart = new Date(selYear, selMonth - 1, 1);
+    const monthEnd   = new Date(selYear, selMonth, 0, 23, 59, 59);
+
     if (tbody) tbody.innerHTML = "<tr><td colspan=\"5\" class=\"dash-loading\">Loading\u2026</td></tr>";
     if (budgetProgressEl) budgetProgressEl.innerHTML = "<p class=\"dash-loading\">Loading\u2026</p>";
+    if (legendEl) legendEl.innerHTML = "";
+    if (donutCenter) donutCenter.textContent = "";
 
-    // Load account IDs
+    // Load accounts
     let allAccountIds = [];
     let accountMap = {};
     try {
@@ -117,24 +154,14 @@ export async function initDashboardPage(uid) {
     let catMap = {};
     try { catMap = await getCategoriesMap(uid); } catch (e) { /* ignore */ }
 
-    // Current month bounds
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    const period     = currentPeriod();
-
-    // Fetch transactions in batches of 30 (Firestore `in` limit)
+    // Fetch transactions
     let allTxns = [];
     try {
       const txnCol = collection(getDb(), "transactions");
       const IN_LIMIT = 30;
       for (let i = 0; i < allAccountIds.length; i += IN_LIMIT) {
         const chunk = allAccountIds.slice(i, i + IN_LIMIT);
-        const q = query(
-          txnCol,
-          where("accountId", "in", chunk),
-          orderBy("date", "desc")
-        );
+        const q = query(txnCol, where("accountId", "in", chunk), orderBy("date", "desc"));
         const snap = await getDocs(q);
         snap.docs.forEach(d => allTxns.push({ id: d.id, ...d.data() }));
       }
@@ -144,37 +171,138 @@ export async function initDashboardPage(uid) {
       return;
     }
 
-    // KPI: current-month totals
-    let incomeCents = 0, expenseCents = 0, monthCount = 0;
-    allTxns.forEach(t => {
+    // Filter to selected month
+    const monthTxns = allTxns.filter(t => {
       const d = t.date?.toDate ? t.date.toDate() : new Date(t.date);
-      if (!isNaN(d) && d >= monthStart && d <= monthEnd) {
-        monthCount++;
-        const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
-        if (t.type === "income") incomeCents  += cents;
-        else                     expenseCents += cents;
-      }
+      return !isNaN(d) && d >= monthStart && d <= monthEnd;
     });
 
+    // KPI totals
+    let incomeCents = 0, expenseCents = 0;
+    monthTxns.forEach(t => {
+      const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
+      if (t.type === "income") incomeCents  += cents;
+      else                     expenseCents += cents;
+    });
     const netCents = incomeCents - expenseCents;
 
     if (kpiIncome)   kpiIncome.textContent   = fmtDollars(incomeCents);
     if (kpiExpenses) kpiExpenses.textContent = "-" + fmtDollars(expenseCents);
-    if (kpiCount)    kpiCount.textContent    = monthCount.toLocaleString();
+    if (kpiCount)    kpiCount.textContent    = monthTxns.length.toLocaleString();
     if (kpiNet) {
       kpiNet.textContent = (netCents < 0 ? "-" : "+") + fmtDollars(netCents);
       kpiNet.className = "dash-kpi-value " + (netCents < 0 ? "dash-kpi-value--expense" : "dash-kpi-value--income");
     }
 
+    // ── Spending by Category Donut Chart ─────────────────────────────────────
+    if (chartCanvas && window.Chart) {
+      // Aggregate expenses by category
+      const catTotals = {};
+      monthTxns.forEach(t => {
+        if (t.type === "expense") {
+          const cents = typeof t.amountCents === "number" ? t.amountCents : 0;
+          const key   = t.categoryId || "__uncategorized__";
+          catTotals[key] = (catTotals[key] || 0) + cents;
+        }
+      });
+
+      const sorted = Object.entries(catTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12); // top 12 categories
+
+      const labels = sorted.map(([id]) => {
+        const cat = catMap[id];
+        return cat ? (cat.emoji ? cat.emoji + " " + cat.name : cat.name) : "Other";
+      });
+      const dataVals = sorted.map(([, v]) => v / 100);
+      const colors   = sorted.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+      const totalExpenses = dataVals.reduce((a, b) => a + b, 0);
+
+      // Destroy existing chart before re-rendering
+      if (_chartInstance) {
+        _chartInstance.destroy();
+        _chartInstance = null;
+      }
+
+      if (sorted.length === 0) {
+        if (legendEl) legendEl.innerHTML = "<p class=\"dash-empty\">No expense transactions for this period.</p>";
+        if (donutCenter) donutCenter.textContent = "";
+      } else {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        const textColor = isDark ? "#cdccca" : "#28251d";
+        const mutedColor = isDark ? "#797876" : "#7a7974";
+
+        _chartInstance = new window.Chart(chartCanvas, {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [{
+              data: dataVals,
+              backgroundColor: colors,
+              borderWidth: 2,
+              borderColor: isDark ? "#1c1b19" : "#f9f8f5",
+              hoverBorderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "68%",
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx => {
+                    const val = ctx.parsed;
+                    const pct = totalExpenses > 0 ? ((val / totalExpenses) * 100).toFixed(1) : "0.0";
+                    return " $" + val.toLocaleString("en-US", { minimumFractionDigits: 2 }) + " (" + pct + "%%)";
+                  }
+                },
+                bodyColor: textColor,
+                titleColor: textColor,
+                backgroundColor: isDark ? "#2d2c2a" : "#ffffff",
+                borderColor: isDark ? "#393836" : "#d4d1ca",
+                borderWidth: 1
+              }
+            },
+            animation: { animateRotate: true, duration: 500 }
+          }
+        });
+
+        // Center label
+        if (donutCenter) {
+          donutCenter.innerHTML =
+            '<span class="dash-donut-total">' + fmtDollars(totalExpenses * 100) + "</span>" +
+            '<span class="dash-donut-label">Total Spent</span>';
+        }
+
+        // Custom legend
+        if (legendEl) {
+          legendEl.innerHTML = sorted.map(([id, cents], i) => {
+            const cat = catMap[id];
+            const name = cat ? (cat.emoji ? cat.emoji + " " + cat.name : cat.name) : "Other";
+            const pct  = totalExpenses > 0 ? ((cents / 100 / totalExpenses) * 100).toFixed(1) : "0.0";
+            return (
+              '<div class="dash-legend-item">' +
+                '<span class="dash-legend-dot" style="background:' + colors[i] + '"></span>' +
+                '<span class="dash-legend-name">' + escHtml(name) + "</span>" +
+                '<span class="dash-legend-pct">' + pct + "%</span>" +
+              "</div>"
+            );
+          }).join("");
+        }
+      }
+    }
+
     // ── Budget Progress Bars ──────────────────────────────────────────────────
     if (budgetProgressEl) {
       try {
-        const { rows: actuals } = await buildBudgetActuals(period);
+        const { rows: actuals } = await buildBudgetActuals(selectedPeriod);
         const budgetRows = actuals.filter(r => r.type === "expense" && r.hasBudget);
 
         if (budgetRows.length === 0) {
           budgetProgressEl.innerHTML =
-            "<p class=\"dash-empty\">No expense budgets set for " + escHtml(period) + "." +
+            "<p class=\"dash-empty\">No expense budgets set for " + escHtml(selectedPeriod) + "." +
             " <a href=\"#budgets\" class=\"dash-view-all\" style=\"margin-left:0.4rem\">Add budgets \u2192</a></p>";
         } else {
           budgetRows.sort((a, b) => {
@@ -190,7 +318,7 @@ export async function initDashboardPage(uid) {
     }
 
     // ── Recent Transactions ───────────────────────────────────────────────────
-    const recent = [...allTxns]
+    const recent = [...monthTxns]
       .sort((a, b) => {
         const da  = a.date?.toDate ? a.date.toDate() : new Date(a.date);
         const db2 = b.date?.toDate ? b.date.toDate() : new Date(b.date);
@@ -201,7 +329,7 @@ export async function initDashboardPage(uid) {
     if (!tbody) return;
 
     if (recent.length === 0) {
-      tbody.innerHTML = "<tr><td colspan=\"5\" class=\"dash-empty\">No transactions yet.</td></tr>";
+      tbody.innerHTML = "<tr><td colspan=\"5\" class=\"dash-empty\">No transactions for this period.</td></tr>";
       return;
     }
 
@@ -229,5 +357,9 @@ export async function initDashboardPage(uid) {
   }
 
   _refresh = load;
+
+  // Re-load when month changes
+  if (monthSelect) monthSelect.addEventListener("change", load);
+
   await load();
 }
