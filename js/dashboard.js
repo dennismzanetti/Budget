@@ -1,5 +1,5 @@
 /**
- * dashboard.js — Dashboard page: KPI row + recent transactions
+ * dashboard.js — Dashboard page: KPI row + budget progress bars + recent transactions
  *
  * Exports:
  *   initDashboardPage(uid)
@@ -8,9 +8,10 @@
 
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, query, orderBy, where, limit
+  getFirestore, collection, getDocs, query, orderBy, where
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getCategoriesMap } from "./categories.js";
+import { buildBudgetActuals } from "./budgets.js";
 
 let _db = null;
 function getDb() {
@@ -32,6 +33,12 @@ function fmtDollars(cents) {
   return "$" + (Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function currentPeriod() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  return `${now.getFullYear()}-${mm}`;
+}
+
 let _uid = null;
 let _refresh = null;
 
@@ -46,14 +53,16 @@ export async function initDashboardPage(uid) {
   if (!page) return;
 
   // DOM refs
-  const kpiIncome   = document.getElementById("dashKpiIncome");
-  const kpiExpenses = document.getElementById("dashKpiExpenses");
-  const kpiNet      = document.getElementById("dashKpiNet");
-  const kpiCount    = document.getElementById("dashKpiCount");
-  const tbody       = document.getElementById("dashRecentTbody");
+  const kpiIncome        = document.getElementById("dashKpiIncome");
+  const kpiExpenses      = document.getElementById("dashKpiExpenses");
+  const kpiNet           = document.getElementById("dashKpiNet");
+  const kpiCount         = document.getElementById("dashKpiCount");
+  const tbody            = document.getElementById("dashRecentTbody");
+  const budgetProgressEl = document.getElementById("dashBudgetProgress");
 
   async function load() {
     if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="dash-loading">Loading\u2026</td></tr>`;
+    if (budgetProgressEl) budgetProgressEl.innerHTML = `<p class="dash-loading">Loading\u2026</p>`;
 
     // Load account IDs
     let allAccountIds = [];
@@ -70,6 +79,7 @@ export async function initDashboardPage(uid) {
 
     if (allAccountIds.length === 0) {
       if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="dash-empty">No accounts found.</td></tr>`;
+      if (budgetProgressEl) budgetProgressEl.innerHTML = `<p class="dash-empty">No accounts found.</p>`;
       return;
     }
 
@@ -81,6 +91,7 @@ export async function initDashboardPage(uid) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const period     = currentPeriod();
 
     // Fetch transactions in batches of 30 (Firestore `in` limit)
     let allTxns = [];
@@ -125,10 +136,61 @@ export async function initDashboardPage(uid) {
       kpiNet.className = "dash-kpi-value " + (netCents < 0 ? "dash-kpi-value--expense" : "dash-kpi-value--income");
     }
 
-    // Recent: latest 10 across all accounts
+    // ── Budget Progress Bars ──────────────────────────────────────────────────
+    if (budgetProgressEl) {
+      try {
+        const actuals = await buildBudgetActuals(period);
+        // Only expense rows that have a budget defined
+        const budgetRows = actuals.filter(r => r.type === "expense" && r.hasBudget);
+
+        if (budgetRows.length === 0) {
+          budgetProgressEl.innerHTML = `
+            <p class="dash-empty">
+              No expense budgets set for ${period}.
+              <a href="#budgets" class="dash-view-all" style="margin-left:0.4rem">Add budgets →</a>
+            </p>`;
+        } else {
+          // Sort: over-budget first, then by % used desc
+          budgetRows.sort((a, b) => {
+            if (a.isOverBudget !== b.isOverBudget) return a.isOverBudget ? -1 : 1;
+            return b.percentUsed - a.percentUsed;
+          });
+
+          budgetProgressEl.innerHTML = budgetRows.map(r => {
+            const pct        = Math.min(r.percentUsed, 100);
+            const isOver     = r.isOverBudget;
+            const isWarn     = !isOver && r.percentUsed >= 75;
+            const statusClass = isOver ? "dash-bp-bar--over" : isWarn ? "dash-bp-bar--warn" : "dash-bp-bar--ok";
+            const emoji       = r.categoryEmoji ? escHtml(r.categoryEmoji) + " " : "";
+            const pctLabel    = r.percentUsed > 0 ? Math.round(r.percentUsed) + "%" : "0%";
+
+            return `
+              <div class="dash-bp-row">
+                <div class="dash-bp-labels">
+                  <span class="dash-bp-name">${emoji}${escHtml(r.categoryName)}</span>
+                  <span class="dash-bp-amounts">
+                    <span class="dash-bp-spent ${isOver ? "dash-bp-spent--over" : "}">${escHtml(fmtDollars(r.actualAmountCents))}</span>
+                    <span class="dash-bp-sep">/</span>
+                    <span class="dash-bp-budget">${escHtml(fmtDollars(r.budgetAmountCents))}</span>
+                    <span class="dash-bp-pct ${isOver ? "dash-bp-pct--over" : ""}"> &middot; ${escHtml(pctLabel)}</span>
+                  </span>
+                </div>
+                <div class="dash-bp-track">
+                  <div class="dash-bp-bar ${statusClass}" style="width:${pct.toFixed(1)}%"></div>
+                </div>
+              </div>`;
+          }).join("");
+        }
+      } catch (e) {
+        console.error("[dashboard] budget progress error:", e);
+        budgetProgressEl.innerHTML = `<p class="dash-empty">Could not load budget data.</p>`;
+      }
+    }
+
+    // ── Recent Transactions ───────────────────────────────────────────────────
     const recent = [...allTxns]
       .sort((a, b) => {
-        const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+        const da  = a.date?.toDate ? a.date.toDate() : new Date(a.date);
         const db2 = b.date?.toDate ? b.date.toDate() : new Date(b.date);
         return db2 - da;
       })
