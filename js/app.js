@@ -7,6 +7,9 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { loadPartials } from "./partials.js";
+import { initNav, getPage } from "./nav.js";
+import { loadCommits } from "./commits.js";
 import { seedAccountsIfEmpty, initAccountsPage, refreshAccountsPage } from "./accounts.js";
 import { initTransactionsPage, refreshTransactionsPage } from "./transactions.js";
 import { initCategoriesPage, refreshCategoriesPage } from "./categories.js";
