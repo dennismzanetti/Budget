@@ -36,7 +36,37 @@ function fmtDollars(cents) {
 function currentPeriod() {
   const now = new Date();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
-  return `${now.getFullYear()}-${mm}`;
+  return now.getFullYear() + "-" + mm;
+}
+
+/** Build HTML for a single budget progress row — uses concatenation to avoid nested template literal issues */
+function buildBudgetRow(r) {
+  const pct         = Math.min(r.percentUsed, 100);
+  const isOver      = r.isOverBudget;
+  const isWarn      = !isOver && r.percentUsed >= 75;
+  const statusClass = isOver ? "dash-bp-bar--over" : isWarn ? "dash-bp-bar--warn" : "dash-bp-bar--ok";
+  const spentClass  = isOver ? "dash-bp-spent dash-bp-spent--over" : "dash-bp-spent";
+  const pctClass    = isOver ? "dash-bp-pct dash-bp-pct--over" : "dash-bp-pct";
+  const emoji       = r.categoryEmoji ? escHtml(r.categoryEmoji) + " " : "";
+  const pctLabel    = r.percentUsed > 0 ? Math.round(r.percentUsed) + "%" : "0%";
+  const widthStyle  = pct.toFixed(1) + "%";
+
+  return (
+    '<div class="dash-bp-row">' +
+      '<div class="dash-bp-labels">' +
+        '<span class="dash-bp-name">' + emoji + escHtml(r.categoryName) + "</span>" +
+        '<span class="dash-bp-amounts">' +
+          '<span class="' + spentClass + '">' + escHtml(fmtDollars(r.actualAmountCents)) + "</span>" +
+          '<span class="dash-bp-sep">/</span>' +
+          '<span class="dash-bp-budget">' + escHtml(fmtDollars(r.budgetAmountCents)) + "</span>" +
+          '<span class="' + pctClass + '"> &middot; ' + escHtml(pctLabel) + "</span>" +
+        "</span>" +
+      "</div>" +
+      '<div class="dash-bp-track">' +
+        '<div class="dash-bp-bar ' + statusClass + '" style="width:' + widthStyle + '"></div>' +
+      "</div>" +
+    "</div>"
+  );
 }
 
 let _uid = null;
@@ -61,8 +91,8 @@ export async function initDashboardPage(uid) {
   const budgetProgressEl = document.getElementById("dashBudgetProgress");
 
   async function load() {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="dash-loading">Loading\u2026</td></tr>`;
-    if (budgetProgressEl) budgetProgressEl.innerHTML = `<p class="dash-loading">Loading\u2026</p>`;
+    if (tbody) tbody.innerHTML = "<tr><td colspan=\"5\" class=\"dash-loading\">Loading\u2026</td></tr>";
+    if (budgetProgressEl) budgetProgressEl.innerHTML = "<p class=\"dash-loading\">Loading\u2026</p>";
 
     // Load account IDs
     let allAccountIds = [];
@@ -78,8 +108,8 @@ export async function initDashboardPage(uid) {
     }
 
     if (allAccountIds.length === 0) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="dash-empty">No accounts found.</td></tr>`;
-      if (budgetProgressEl) budgetProgressEl.innerHTML = `<p class="dash-empty">No accounts found.</p>`;
+      if (tbody) tbody.innerHTML = "<tr><td colspan=\"5\" class=\"dash-empty\">No accounts found.</td></tr>";
+      if (budgetProgressEl) budgetProgressEl.innerHTML = "<p class=\"dash-empty\">No accounts found.</p>";
       return;
     }
 
@@ -110,7 +140,7 @@ export async function initDashboardPage(uid) {
       }
     } catch (err) {
       console.error("[dashboard] load error:", err);
-      if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="dash-empty">Error loading transactions.</td></tr>`;
+      if (tbody) tbody.innerHTML = "<tr><td colspan=\"5\" class=\"dash-empty\">Error loading transactions.</td></tr>";
       return;
     }
 
@@ -143,46 +173,19 @@ export async function initDashboardPage(uid) {
         const budgetRows = actuals.filter(r => r.type === "expense" && r.hasBudget);
 
         if (budgetRows.length === 0) {
-          budgetProgressEl.innerHTML = `
-            <p class="dash-empty">
-              No expense budgets set for ${period}.
-              <a href="#budgets" class="dash-view-all" style="margin-left:0.4rem">Add budgets →</a>
-            </p>`;
+          budgetProgressEl.innerHTML =
+            "<p class=\"dash-empty\">No expense budgets set for " + escHtml(period) + "." +
+            " <a href=\"#budgets\" class=\"dash-view-all\" style=\"margin-left:0.4rem\">Add budgets \u2192</a></p>";
         } else {
           budgetRows.sort((a, b) => {
             if (a.isOverBudget !== b.isOverBudget) return a.isOverBudget ? -1 : 1;
             return b.percentUsed - a.percentUsed;
           });
-
-          budgetProgressEl.innerHTML = budgetRows.map(r => {
-            const pct         = Math.min(r.percentUsed, 100);
-            const isOver      = r.isOverBudget;
-            const isWarn      = !isOver && r.percentUsed >= 75;
-            const statusClass = isOver ? "dash-bp-bar--over" : isWarn ? "dash-bp-bar--warn" : "dash-bp-bar--ok";
-            const spentClass  = isOver ? "dash-bp-spent dash-bp-spent--over" : "dash-bp-spent";
-            const pctClass    = isOver ? "dash-bp-pct dash-bp-pct--over" : "dash-bp-pct";
-            const emoji       = r.categoryEmoji ? escHtml(r.categoryEmoji) + " " : "";
-            const pctLabel    = r.percentUsed > 0 ? Math.round(r.percentUsed) + "%" : "0%";
-
-            return `<div class="dash-bp-row">
-              <div class="dash-bp-labels">
-                <span class="dash-bp-name">${emoji}${escHtml(r.categoryName)}</span>
-                <span class="dash-bp-amounts">
-                  <span class="${spentClass}">${escHtml(fmtDollars(r.actualAmountCents))}</span>
-                  <span class="dash-bp-sep">/</span>
-                  <span class="dash-bp-budget">${escHtml(fmtDollars(r.budgetAmountCents))}</span>
-                  <span class="${pctClass}"> &middot; ${escHtml(pctLabel)}</span>
-                </span>
-              </div>
-              <div class="dash-bp-track">
-                <div class="dash-bp-bar ${statusClass}" style="width:${pct.toFixed(1)}%"></div>
-              </div>
-            </div>`;
-          }).join("");
+          budgetProgressEl.innerHTML = budgetRows.map(buildBudgetRow).join("");
         }
       } catch (e) {
         console.error("[dashboard] budget progress error:", e);
-        budgetProgressEl.innerHTML = `<p class="dash-empty">Could not load budget data.</p>`;
+        budgetProgressEl.innerHTML = "<p class=\"dash-empty\">Could not load budget data.</p>";
       }
     }
 
@@ -198,24 +201,30 @@ export async function initDashboardPage(uid) {
     if (!tbody) return;
 
     if (recent.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="dash-empty">No transactions yet.</td></tr>`;
+      tbody.innerHTML = "<tr><td colspan=\"5\" class=\"dash-empty\">No transactions yet.</td></tr>";
       return;
     }
 
     tbody.innerHTML = recent.map(t => {
       const isIncome = t.type === "income";
       const catObj   = catMap[t.categoryId];
-      const catLabel = catObj ? (catObj.emoji ? `${catObj.emoji} ${catObj.name}` : catObj.name) : "—";
-      const acctName = accountMap[t.accountId] ?? "—";
-      return `<tr>
-        <td class="dash-col-date">${escHtml(formatDate(t.date))}</td>
-        <td class="dash-col-payee">${escHtml(t.payee ?? "—")}</td>
-        <td class="dash-col-account dash-hide-mobile">${escHtml(acctName)}</td>
-        <td class="dash-col-category dash-hide-mobile">${escHtml(catLabel)}</td>
-        <td class="dash-col-amount dash-amount--${isIncome ? "income" : "expense"}">
-          ${isIncome ? "+" : "-"}${escHtml(fmtDollars(t.amountCents))}
-        </td>
-      </tr>`;
+      const catLabel = catObj
+        ? (catObj.emoji ? catObj.emoji + " " + catObj.name : catObj.name)
+        : "\u2014";
+      const acctName = accountMap[t.accountId] ?? "\u2014";
+      const amtSign  = isIncome ? "+" : "-";
+      const amtClass = isIncome ? "income" : "expense";
+      return (
+        "<tr>" +
+          "<td class=\"dash-col-date\">"     + escHtml(formatDate(t.date))         + "</td>" +
+          "<td class=\"dash-col-payee\">"    + escHtml(t.payee ?? "\u2014")        + "</td>" +
+          "<td class=\"dash-col-account dash-hide-mobile\">" + escHtml(acctName)   + "</td>" +
+          "<td class=\"dash-col-category dash-hide-mobile\">" + escHtml(catLabel)  + "</td>" +
+          "<td class=\"dash-col-amount dash-amount--" + amtClass + "\">" +
+            amtSign + escHtml(fmtDollars(t.amountCents)) +
+          "</td>" +
+        "</tr>"
+      );
     }).join("");
   }
 
