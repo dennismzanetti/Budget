@@ -169,7 +169,7 @@ export async function initDashboardPage(uid) {
     // ── Budget Progress Bars ──────────────────────────────────────────────────
     if (budgetProgressEl) {
       try {
-        const actuals = await buildBudgetActuals(period);
+        const { rows: actuals } = await buildBudgetActuals(period);
         const budgetRows = actuals.filter(r => r.type === "expense" && r.hasBudget);
 
         if (budgetRows.length === 0) {
