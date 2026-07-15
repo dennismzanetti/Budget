@@ -2,7 +2,8 @@
  * reports.js — Reports page
  *
  * Exports:
- *   initReportsPage() — wires up the #reports page UI
+ *   initReportsPage()    — wires up the #reports page UI (called once on login)
+ *   refreshReportsPage() — re-fetches and re-renders (called on every navigation)
  *
  * Reads from root-level shared collections:
  *   transactions  — date (Timestamp), amountCents, type, categoryId, payee, isActive
@@ -365,7 +366,7 @@ async function renderReports() {
   renderTopTransactions(txns, catMap);
 }
 
-// ── Page init ──────────────────────────────────────────────────────────────
+// ── Page init — called ONCE on login to wire up controls ──────────────────
 export function initReportsPage() {
   if (typeof Chart === "undefined") {
     const script = document.createElement("script");
@@ -405,10 +406,9 @@ function _initControls() {
   yearSelect?.addEventListener("change", renderReports);
 
   renderReports();
-
-  // ── Lightweight refresh (called on every navigation) ──────────────────────
-  export function refreshReportsPage() {
-    renderReports();
 }
 
+// ── Refresh — called on every navigation to re-fetch and re-render ─────────
+export function refreshReportsPage() {
+  renderReports();
 }
