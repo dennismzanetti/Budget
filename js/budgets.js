@@ -628,10 +628,10 @@ export function initBudgetsPage() {
   }
 
   loadAndRender();
-  
-  // ── Lightweight refresh (called on every navigation) ──────────────────────
-  export function refreshBudgetsPage() {
-    loadAndRender();
 }
 
+// ── Lightweight refresh (called on every navigation) ─────────────────────────
+
+export function refreshBudgetsPage() {
+  loadAndRender();
 }
