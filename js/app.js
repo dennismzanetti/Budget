@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { seedAccountsIfEmpty, initAccountsPage, refreshAccountsPage } from "./accounts.js";
 import { initTransactionsPage, refreshTransactionsPage } from "./transactions.js";
 import { initCategoriesPage, refreshCategoriesPage } from "./categories.js";
@@ -47,7 +48,7 @@ function bindThemeToggles() {
   });
 }
 
-// ── Auth ───────────────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────────
 async function login() {
   await signInWithPopup(auth, provider);
 }
@@ -105,7 +106,7 @@ window.addEventListener('hashchange', () => {
    if (getPage() === 'reports')      refreshReportsPage();
 });
 
-// ── Init ───────────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
 export { db };
 
 (async () => {
