@@ -61,6 +61,18 @@ async function logout() {
   await signOut(auth);
 }
 
+// ── Page Refresh ──────────────────────────────────────────────────────────────
+function refreshCurrentPage() {
+  const page = getPage();
+  if (page === 'accounts')     refreshAccountsPage();
+  if (page === 'transactions') refreshTransactionsPage();
+  if (page === 'categories')   refreshCategoriesPage();
+  if (page === 'import')       refreshImportPage();
+  if (page === 'budget')       refreshBudgetsPage();
+  if (page === 'reports')      refreshReportsPage();
+  if (page === 'dashboard')    refreshDashboardPage();
+}
+
 function updateUI(user) {
   const loggedOutView  = document.getElementById("loggedOutView");
   const loggedInView   = document.getElementById("loggedInView");
@@ -96,20 +108,21 @@ function updateUI(user) {
   initBudgetsPage();
   initReportsPage();
   initDashboardPage(user.uid);
+
+  // Refresh the currently active page after all modules are initialized
+  refreshCurrentPage();
 }
 
 function initAuth() {
   onAuthStateChanged(auth, updateUI);
 }
 
-window.addEventListener('hashchange', () => {
-   if (getPage() === 'accounts')     refreshAccountsPage();
-   if (getPage() === 'transactions') refreshTransactionsPage();
-   if (getPage() === 'categories')   refreshCategoriesPage();
-   if (getPage() === 'import')       refreshImportPage();
-   if (getPage() === 'budget')       refreshBudgetsPage();
-   if (getPage() === 'reports')      refreshReportsPage();
-   if (getPage() === 'dashboard')    refreshDashboardPage();
+// Refresh on hash navigation
+window.addEventListener('hashchange', refreshCurrentPage);
+
+// Refresh when page is restored from back/forward cache
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) refreshCurrentPage();
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
