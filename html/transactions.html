@@ -3,14 +3,24 @@
   <!-- Page header -->
   <div class="txn-page-header-bar">
     <h2 class="page-title">Transactions</h2>
-    <button id="massUpdateBtn" class="btn btn-secondary btn-sm" type="button"
-            style="margin-left:auto;display:flex;align-items:center;gap:0.35rem;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-      </svg>
-      Mass Update
-    </button>
+    <div style="margin-left:auto;display:flex;gap:0.5rem;">
+      <button id="addTransactionBtn" class="btn btn-primary btn-sm" type="button"
+              style="display:flex;align-items:center;gap:0.35rem;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add Transaction
+      </button>
+      <button id="massUpdateBtn" class="btn btn-secondary btn-sm" type="button"
+              style="display:flex;align-items:center;gap:0.35rem;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        Mass Update
+      </button>
+    </div>
   </div>
 
   <!-- Summary stat cards (above filters) -->
@@ -66,129 +76,170 @@
 
   <!-- Scrollable table region -->
   <div class="txn-table-region">
-    <div class="txn-table-wrap">
+    <div class="txn-table-wrapper">
       <table class="txn-table" aria-label="Transactions">
         <thead>
           <tr>
-            <th scope="col" class="txn-col-date txn-th--sortable" data-col="date" aria-sort="descending">
+            <th class="txn-th txn-th--sortable txn-col-date" data-col="date" scope="col" aria-sort="descending">
               Date <span class="txn-sort-icon" aria-hidden="true">&#8595;</span>
             </th>
-            <th scope="col" class="txn-col-desc txn-th--sortable" data-col="payee" aria-sort="none">
+            <th class="txn-th txn-th--sortable txn-col-desc" data-col="payee" scope="col" aria-sort="none">
               Description <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
-            <th scope="col" class="txn-col-account txn-hide-mobile txn-th--sortable" data-col="account" aria-sort="none">
+            <th class="txn-th txn-th--sortable txn-col-account txn-hide-mobile" data-col="account" scope="col" aria-sort="none">
               Account <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
-            <th scope="col" class="txn-col-category txn-th--sortable" data-col="category" aria-sort="none">
+            <th class="txn-th txn-th--sortable txn-col-category" data-col="category" scope="col" aria-sort="none">
               Category <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
-            <th scope="col" class="txn-col-type txn-hide-mobile txn-th--sortable" data-col="type" aria-sort="none">
+            <th class="txn-th txn-th--sortable txn-col-type txn-hide-mobile" data-col="type" scope="col" aria-sort="none">
               Type <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
-            <th scope="col" class="txn-col-amount txn-th--sortable" data-col="amount" aria-sort="none">
+            <th class="txn-th txn-th--sortable txn-col-amount" data-col="amount" scope="col" aria-sort="none">
               Amount <span class="txn-sort-icon" aria-hidden="true">&#8597;</span>
             </th>
-            <th scope="col" class="txn-col-actions"><span class="sr-only">Actions</span></th>
+            <th class="txn-th txn-col-actions" scope="col"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
-        <tbody id="txnTableBody" aria-live="polite">
+        <tbody id="txnTableBody">
           <tr><td colspan="7" class="txn-loading">Loading&#8230;</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- ── Mass Category Update Modal ───────────────────────────────── -->
-  <div id="massUpdateModal" role="dialog" aria-modal="true" aria-labelledby="massUpdateTitle"
-       style="display:none;position:fixed;inset:0;z-index:1000;background:oklch(0 0 0/0.45);backdrop-filter:blur(3px);overflow-y:auto;padding:2rem 1rem;">
-    <div style="max-width:560px;margin:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg,12px);box-shadow:var(--shadow-lg);overflow:hidden;">
-
-      <!-- Modal header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
-        <h3 id="massUpdateTitle" style="font-size:1rem;font-weight:600;margin:0;">Mass Category Update</h3>
-        <button id="massUpdateClose" aria-label="Close" type="button"
-                style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.25rem;line-height:1;padding:0.25rem;">&times;</button>
+  <!-- ── Add Transaction Modal ─────────────────────────────────────── -->
+  <div id="addTransactionModal" class="modal-backdrop" style="display:none;" role="dialog"
+       aria-modal="true" aria-labelledby="addTxnModalTitle">
+    <div class="modal-box" style="max-width:480px;width:100%;">
+      <div class="modal-header">
+        <h3 id="addTxnModalTitle" class="modal-title">Add Transaction</h3>
+        <button id="addTxnClose" class="modal-close-btn" aria-label="Close">&times;</button>
       </div>
+      <div class="modal-body">
+        <form id="addTxnForm" novalidate autocomplete="off">
 
-      <!-- Criteria panel -->
-      <div id="massUpdateCriteriaPanel" style="padding:1.25rem;">
-        <p style="font-size:0.78rem;color:var(--muted);margin:0 0 1rem;">Match transactions where&#8230;</p>
-
-        <div style="display:grid;gap:0.75rem;">
-
-          <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.8rem;font-weight:500;">
-            Description contains
-            <input id="muDesc" type="text" placeholder="e.g. AMAZON, Starbucks&#8230;"
-                   style="height:32px;padding:0 0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--bg);color:var(--text);font-size:0.8rem;outline:none;" />
-          </label>
-
-          <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.8rem;font-weight:500;">
-            Current category
-            <select id="muCurrentCat"
-                    style="height:32px;padding:0 0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--bg);color:var(--text);font-size:0.8rem;outline:none;">
-              <option value="">Any category</option>
-            </select>
-          </label>
-
-          <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.8rem;font-weight:500;">
-            Account
-            <select id="muAccount"
-                    style="height:32px;padding:0 0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--bg);color:var(--text);font-size:0.8rem;outline:none;">
-              <option value="">Any account</option>
-            </select>
-          </label>
-
-          <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.8rem;font-weight:500;">
-            Type
-            <select id="muType"
-                    style="height:32px;padding:0 0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--bg);color:var(--text);font-size:0.8rem;outline:none;">
-              <option value="">Any type</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-          </label>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-            <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.8rem;font-weight:500;">
-              Date from
-              <input id="muDateFrom" type="date"
-                     style="height:32px;padding:0 0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--bg);color:var(--text);font-size:0.8rem;outline:none;" />
-            </label>
-            <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.8rem;font-weight:500;">
-              Date to
-              <input id="muDateTo" type="date"
-                     style="height:32px;padding:0 0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--bg);color:var(--text);font-size:0.8rem;outline:none;" />
-            </label>
+          <div class="form-group">
+            <label for="addTxnDate" class="form-label">Date <span aria-hidden="true">*</span></label>
+            <input id="addTxnDate" type="date" class="form-input" required />
           </div>
 
-          <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.8rem;font-weight:600;">
-            Set category to <span style="color:var(--color-notification,#a13544);">*</span>
-            <select id="muTargetCat"
-                    style="height:32px;padding:0 0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--bg);color:var(--text);font-size:0.8rem;outline:none;">
-              <option value="">&#8212; select a category &#8212;</option>
+          <div class="form-group">
+            <label for="addTxnPayee" class="form-label">Description / Payee <span aria-hidden="true">*</span></label>
+            <input id="addTxnPayee" type="text" class="form-input" placeholder="e.g. Grocery Store" required />
+          </div>
+
+          <div class="form-group">
+            <label for="addTxnAccount" class="form-label">Account <span aria-hidden="true">*</span></label>
+            <select id="addTxnAccount" class="form-input" required>
+              <option value="">&#8212; select account &#8212;</option>
             </select>
-          </label>
+          </div>
 
+          <div class="form-group">
+            <label for="addTxnCategory" class="form-label">Category</label>
+            <select id="addTxnCategory" class="form-input">
+              <option value="">&#8212; none &#8212;</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="addTxnType" class="form-label">Type <span aria-hidden="true">*</span></label>
+            <select id="addTxnType" class="form-input" required>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="addTxnAmount" class="form-label">Amount ($) <span aria-hidden="true">*</span></label>
+            <input id="addTxnAmount" type="number" class="form-input" placeholder="0.00"
+                   min="0.01" step="0.01" required />
+          </div>
+
+          <div class="form-group">
+            <label for="addTxnNotes" class="form-label">Notes</label>
+            <input id="addTxnNotes" type="text" class="form-input" placeholder="Optional notes" />
+          </div>
+
+          <div id="addTxnError" style="display:none;color:var(--color-error,#a12c7b);
+               background:var(--color-error-highlight,#e0ced7);border-radius:var(--radius-md,6px);
+               padding:0.5rem 0.75rem;margin-bottom:0.75rem;font-size:0.875rem;">
+          </div>
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="addTxnCancel" class="btn btn-secondary">Cancel</button>
+        <button id="addTxnSave" class="btn btn-primary">Save Transaction</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Mass Update Modal ─────────────────────────────────────────── -->
+  <div id="massUpdateModal" class="modal-backdrop" style="display:none;" role="dialog"
+       aria-modal="true" aria-labelledby="massUpdateModalTitle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="massUpdateModalTitle" class="modal-title">Mass Category Update</h3>
+        <button id="massUpdateClose" class="modal-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Criteria panel -->
+        <div id="massUpdateCriteriaPanel">
+          <p style="margin-bottom:1rem;color:var(--color-text-muted,#7a7974);font-size:0.875rem;">Match transactions by any combination of criteria, then bulk-assign a category.</p>
+          <div class="form-group">
+            <label class="form-label" for="muDesc">Description contains</label>
+            <input id="muDesc" type="text" class="form-input" placeholder="e.g. Amazon" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="muCurrentCat">Current category</label>
+            <select id="muCurrentCat" class="form-input"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="muAccount">Account</label>
+            <select id="muAccount" class="form-input"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="muType">Type</label>
+            <select id="muType" class="form-input">
+              <option value="">Any type</option>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="muDateFrom">From date</label>
+              <input id="muDateFrom" type="date" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="muDateTo">To date</label>
+              <input id="muDateTo" type="date" class="form-input" />
+            </div>
+          </div>
+          <hr style="margin:1rem 0;border:none;border-top:1px solid var(--color-divider,#dcd9d5);" />
+          <div class="form-group">
+            <label class="form-label" for="muTargetCat">Assign category <span aria-hidden="true">*</span></label>
+            <select id="muTargetCat" class="form-input"></select>
+          </div>
         </div>
 
-        <div style="display:flex;justify-content:flex-end;gap:0.6rem;margin-top:1.25rem;">
-          <button id="massUpdateCancel" type="button" class="btn btn-ghost btn-sm">Cancel</button>
-          <button id="massUpdatePreview" type="button" class="btn btn-primary btn-sm">Preview Matches</button>
+        <!-- Preview panel (shown after clicking Preview) -->
+        <div id="massUpdatePreviewPanel" style="display:none;">
+          <p id="massUpdatePreviewSummary" style="margin-bottom:0.75rem;font-weight:600;"></p>
+          <div id="massUpdatePreviewList"
+               style="max-height:320px;overflow-y:auto;border:1px solid var(--color-border,#d4d1ca);
+                      border-radius:var(--radius-md,6px);font-size:0.8rem;">
+          </div>
         </div>
       </div>
-
-      <!-- Preview panel (hidden until preview step) -->
-      <div id="massUpdatePreviewPanel" style="display:none;padding:1.25rem;">
-        <p id="massUpdatePreviewSummary" style="font-size:0.85rem;font-weight:600;margin:0 0 0.75rem;"></p>
-        <div id="massUpdatePreviewList"
-             style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm,8px);font-size:0.78rem;">
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:0.6rem;margin-top:1rem;">
-          <button id="massUpdateBack" type="button" class="btn btn-ghost btn-sm">&#8592; Back</button>
-          <button id="massUpdateApply" type="button" class="btn btn-primary btn-sm"></button>
-        </div>
+      <div class="modal-footer">
+        <button id="massUpdateCancel" class="btn btn-secondary">Cancel</button>
+        <button id="massUpdateBack" class="btn btn-secondary" style="display:none;">&#8592; Back</button>
+        <button id="massUpdatePreview" class="btn btn-primary">Preview matches</button>
+        <button id="massUpdateApply" class="btn btn-primary" style="display:none;">Apply</button>
       </div>
-
     </div>
   </div>
 

@@ -14,7 +14,7 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, updateDoc, deleteDoc,
-  doc, query, orderBy, where, writeBatch
+  doc, query, orderBy, where, writeBatch, addDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { populateAccountSelect } from "./accounts.js";
 import { getCategoriesMap } from "./categories.js";
@@ -374,6 +374,140 @@ export async function initTransactionsPage(_uid) {
     renderTable();
   });
 
+  // ── Add Transaction Modal ─────────────────────────────────────────
+  const addTransactionBtn  = document.getElementById("addTransactionBtn");
+  const addTransactionModal = document.getElementById("addTransactionModal");
+  const addTxnClose        = document.getElementById("addTxnClose");
+  const addTxnCancel       = document.getElementById("addTxnCancel");
+  const addTxnSave         = document.getElementById("addTxnSave");
+  const addTxnForm         = document.getElementById("addTxnForm");
+  const addTxnDate         = document.getElementById("addTxnDate");
+  const addTxnPayee        = document.getElementById("addTxnPayee");
+  const addTxnAccount      = document.getElementById("addTxnAccount");
+  const addTxnCategory     = document.getElementById("addTxnCategory");
+  const addTxnType         = document.getElementById("addTxnType");
+  const addTxnAmount       = document.getElementById("addTxnAmount");
+  const addTxnNotes        = document.getElementById("addTxnNotes");
+  const addTxnError        = document.getElementById("addTxnError");
+
+  function populateAddTxnDropdowns() {
+    // Accounts
+    if (addTxnAccount) {
+      addTxnAccount.innerHTML = '<option value="">&#8212; select account &#8212;</option>' +
+        Object.entries(accountMap).map(([id, name]) =>
+          `<option value="${escHtml(id)}">${escHtml(name)}</option>`
+        ).join("");
+    }
+    // Categories
+    if (addTxnCategory) {
+      addTxnCategory.innerHTML = '<option value="">&#8212; none &#8212;</option>' +
+        Object.entries(catMap).map(([id, cat]) => {
+          const label = cat.emoji ? `${cat.emoji} ${cat.name}` : cat.name;
+          return `<option value="${escHtml(id)}">${escHtml(label)}</option>`;
+        }).join("");
+    }
+  }
+
+  function showAddTxnError(msg) {
+    if (!addTxnError) return;
+    addTxnError.textContent = msg;
+    addTxnError.style.display = msg ? "block" : "none";
+  }
+
+  function openAddTransactionModal() {
+    populateAddTxnDropdowns();
+    // Reset fields
+    if (addTxnDate)     addTxnDate.value     = new Date().toISOString().slice(0, 10);
+    if (addTxnPayee)    addTxnPayee.value    = "";
+    if (addTxnAccount)  addTxnAccount.value  = "";
+    if (addTxnCategory) addTxnCategory.value = "";
+    if (addTxnType)     addTxnType.value     = "expense";
+    if (addTxnAmount)   addTxnAmount.value   = "";
+    if (addTxnNotes)    addTxnNotes.value    = "";
+    showAddTxnError("");
+    if (addTxnSave) { addTxnSave.disabled = false; addTxnSave.textContent = "Save Transaction"; }
+    addTransactionModal.style.display = "block";
+    addTxnPayee?.focus();
+  }
+
+  function closeAddTransactionModal() {
+    addTransactionModal.style.display = "none";
+  }
+
+  addTransactionBtn?.addEventListener("click", openAddTransactionModal);
+  addTxnClose?.addEventListener("click", closeAddTransactionModal);
+  addTxnCancel?.addEventListener("click", closeAddTransactionModal);
+  addTransactionModal?.addEventListener("click", e => {
+    if (e.target === addTransactionModal) closeAddTransactionModal();
+  });
+
+  addTxnSave?.addEventListener("click", async () => {
+    showAddTxnError("");
+
+    // Validate
+    const dateVal   = addTxnDate?.value ?? "";
+    const payeeVal  = addTxnPayee?.value.trim() ?? "";
+    const acctId    = addTxnAccount?.value ?? "";
+    const catId     = addTxnCategory?.value ?? "";
+    const typeVal   = addTxnType?.value ?? "expense";
+    const amtStr    = addTxnAmount?.value ?? "";
+    const notesVal  = addTxnNotes?.value.trim() ?? "";
+
+    if (!dateVal)  { showAddTxnError("Please enter a date.");         addTxnDate?.focus();    return; }
+    if (!payeeVal) { showAddTxnError("Please enter a description.");  addTxnPayee?.focus();   return; }
+    if (!acctId)   { showAddTxnError("Please select an account.");    addTxnAccount?.focus(); return; }
+
+    const amtFloat = parseFloat(amtStr);
+    if (!amtStr || isNaN(amtFloat) || amtFloat <= 0) {
+      showAddTxnError("Please enter a valid amount greater than 0.");
+      addTxnAmount?.focus();
+      return;
+    }
+
+    const amountCents = Math.round(amtFloat * 100);
+
+    // Build Firestore timestamp from date input (treat as local midnight)
+    const [year, month, day] = dateVal.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day, 12, 0, 0); // noon to avoid DST shifts
+    const firestoreDate = Timestamp.fromDate(dateObj);
+
+    addTxnSave.disabled = true;
+    addTxnSave.textContent = "Saving\u2026";
+
+    try {
+      const newDoc = {
+        date:        firestoreDate,
+        payee:       payeeVal,
+        amountCents: amountCents,
+        type:        typeVal,
+        accountId:   acctId,
+        categoryId:  catId || "",
+        notes:       notesVal,
+        source:      "manual",
+        isActive:    true,
+        isCleared:   false,
+        createdAt:   new Date()
+      };
+
+      const ref = await addDoc(collection(getDb(), "transactions"), newDoc);
+
+      // Add to local cache and re-render
+      allTxns.unshift({ id: ref.id, ...newDoc });
+      // Also update allAccountIds if needed (account might already be there)
+      if (!allAccountIds.includes(acctId)) {
+        allAccountIds.push(acctId);
+      }
+
+      closeAddTransactionModal();
+      renderTable();
+    } catch (err) {
+      console.error("[transactions] addDoc error:", err);
+      showAddTxnError("Failed to save transaction. Please try again.");
+      addTxnSave.disabled = false;
+      addTxnSave.textContent = "Save Transaction";
+    }
+  });
+
   // ── Mass Category Update ──────────────────────────────────────────
   const massUpdateBtn      = document.getElementById("massUpdateBtn");
   const massUpdateModal    = document.getElementById("massUpdateModal");
@@ -394,9 +528,7 @@ export async function initTransactionsPage(_uid) {
   const previewSummary     = document.getElementById("massUpdatePreviewSummary");
   const previewList        = document.getElementById("massUpdatePreviewList");
 
-  // Populate mass-update dropdowns from catMap and accountMap
   function populateMassUpdateDropdowns() {
-    // Current category dropdown
     if (muCurrentCat) {
       muCurrentCat.innerHTML = '<option value="">Any category</option>' +
         Object.entries(catMap).map(([id, cat]) => {
@@ -404,7 +536,6 @@ export async function initTransactionsPage(_uid) {
           return `<option value="${escHtml(id)}">${escHtml(label)}</option>`;
         }).join("");
     }
-    // Target category dropdown
     if (muTargetCat) {
       muTargetCat.innerHTML = '<option value="">&#8212; select a category &#8212;</option>' +
         Object.entries(catMap).map(([id, cat]) => {
@@ -412,7 +543,6 @@ export async function initTransactionsPage(_uid) {
           return `<option value="${escHtml(id)}">${escHtml(label)}</option>`;
         }).join("");
     }
-    // Account dropdown
     if (muAccount) {
       muAccount.innerHTML = '<option value="">Any account</option>' +
         Object.entries(accountMap).map(([id, name]) =>
@@ -423,7 +553,6 @@ export async function initTransactionsPage(_uid) {
 
   function openMassUpdateModal() {
     populateMassUpdateDropdowns();
-    // Reset form
     if (muDesc)     muDesc.value     = "";
     if (muCurrentCat) muCurrentCat.value = "";
     if (muAccount)  muAccount.value  = "";
@@ -465,12 +594,10 @@ export async function initTransactionsPage(_uid) {
   massUpdateClose?.addEventListener("click", closeMassUpdateModal);
   massUpdateCancel?.addEventListener("click", closeMassUpdateModal);
 
-  // Close on backdrop click
   massUpdateModal?.addEventListener("click", e => {
     if (e.target === massUpdateModal) closeMassUpdateModal();
   });
 
-  // Preview step
   massUpdatePreview?.addEventListener("click", () => {
     const targetCatId = muTargetCat?.value ?? "";
     if (!targetCatId) {
@@ -499,7 +626,6 @@ export async function initTransactionsPage(_uid) {
         const acctName = accountMap[t.accountId] ?? "";
         const oldCat   = catMap[t.categoryId];
         const oldLabel = oldCat ? (oldCat.emoji ? `${oldCat.emoji} ${oldCat.name}` : oldCat.name) : "(none)";
-        const isIncome = t.type === "income";
         return `<div style="display:grid;grid-template-columns:80px 1fr auto;gap:0.5rem;align-items:center;
                             padding:0.4rem 0.75rem;border-bottom:1px solid var(--border);">
           <span style="color:var(--muted);font-size:0.72rem;white-space:nowrap;">${escHtml(formatDate(t.date))}</span>
@@ -521,13 +647,11 @@ export async function initTransactionsPage(_uid) {
     previewPanel.style.display  = "block";
   });
 
-  // Back to criteria
   massUpdateBack?.addEventListener("click", () => {
     criteriaPanel.style.display = "block";
     previewPanel.style.display  = "none";
   });
 
-  // Apply batch update
   massUpdateApply?.addEventListener("click", async () => {
     const targetCatId = muTargetCat?.value ?? "";
     if (!targetCatId) return;
@@ -548,7 +672,6 @@ export async function initTransactionsPage(_uid) {
         await batch.commit();
       }
 
-      // Update local cache
       const idSet = new Set(matches.map(t => t.id));
       allTxns.forEach(t => { if (idSet.has(t.id)) t.categoryId = targetCatId; });
 
@@ -563,7 +686,7 @@ export async function initTransactionsPage(_uid) {
   });
 
   // ─────────────────────────────────────────────────────────────────
-   _refreshTransactionsPage = loadTransactions;
-   await loadTransactions();
+  _refreshTransactionsPage = loadTransactions;
+  await loadTransactions();
 
 }
