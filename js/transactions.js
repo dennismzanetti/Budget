@@ -14,7 +14,7 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, updateDoc, deleteDoc,
-  doc, query, orderBy, where
+  doc, query, orderBy, where, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { populateAccountSelect } from "./accounts.js";
 import { getCategoriesMap } from "./categories.js";
@@ -65,6 +65,7 @@ function hasActiveFilters(acctFilter, catFilter, typeFilter, dateFrom, dateTo, s
   return !!((acctFilter?.value) || (catFilter?.value) || (typeFilter?.value) ||
     (dateFrom?.value) || (dateTo?.value) || (searchInput?.value.trim()));
 }
+
 let _refreshTransactionsPage = null;
 export function refreshTransactionsPage() {
   if (_refreshTransactionsPage) _refreshTransactionsPage();
@@ -373,6 +374,195 @@ export async function initTransactionsPage(_uid) {
     renderTable();
   });
 
+  // ── Mass Category Update ──────────────────────────────────────────
+  const massUpdateBtn      = document.getElementById("massUpdateBtn");
+  const massUpdateModal    = document.getElementById("massUpdateModal");
+  const massUpdateClose    = document.getElementById("massUpdateClose");
+  const massUpdateCancel   = document.getElementById("massUpdateCancel");
+  const massUpdatePreview  = document.getElementById("massUpdatePreview");
+  const massUpdateBack     = document.getElementById("massUpdateBack");
+  const massUpdateApply    = document.getElementById("massUpdateApply");
+  const muDesc             = document.getElementById("muDesc");
+  const muCurrentCat       = document.getElementById("muCurrentCat");
+  const muAccount          = document.getElementById("muAccount");
+  const muType             = document.getElementById("muType");
+  const muDateFrom         = document.getElementById("muDateFrom");
+  const muDateTo           = document.getElementById("muDateTo");
+  const muTargetCat        = document.getElementById("muTargetCat");
+  const criteriaPanel      = document.getElementById("massUpdateCriteriaPanel");
+  const previewPanel       = document.getElementById("massUpdatePreviewPanel");
+  const previewSummary     = document.getElementById("massUpdatePreviewSummary");
+  const previewList        = document.getElementById("massUpdatePreviewList");
+
+  // Populate mass-update dropdowns from catMap and accountMap
+  function populateMassUpdateDropdowns() {
+    // Current category dropdown
+    if (muCurrentCat) {
+      muCurrentCat.innerHTML = '<option value="">Any category</option>' +
+        Object.entries(catMap).map(([id, cat]) => {
+          const label = cat.emoji ? `${cat.emoji} ${cat.name}` : cat.name;
+          return `<option value="${escHtml(id)}">${escHtml(label)}</option>`;
+        }).join("");
+    }
+    // Target category dropdown
+    if (muTargetCat) {
+      muTargetCat.innerHTML = '<option value="">&#8212; select a category &#8212;</option>' +
+        Object.entries(catMap).map(([id, cat]) => {
+          const label = cat.emoji ? `${cat.emoji} ${cat.name}` : cat.name;
+          return `<option value="${escHtml(id)}">${escHtml(label)}</option>`;
+        }).join("");
+    }
+    // Account dropdown
+    if (muAccount) {
+      muAccount.innerHTML = '<option value="">Any account</option>' +
+        Object.entries(accountMap).map(([id, name]) =>
+          `<option value="${escHtml(id)}">${escHtml(name)}</option>`
+        ).join("");
+    }
+  }
+
+  function openMassUpdateModal() {
+    populateMassUpdateDropdowns();
+    // Reset form
+    if (muDesc)     muDesc.value     = "";
+    if (muCurrentCat) muCurrentCat.value = "";
+    if (muAccount)  muAccount.value  = "";
+    if (muType)     muType.value     = "";
+    if (muDateFrom) muDateFrom.value = "";
+    if (muDateTo)   muDateTo.value   = "";
+    if (muTargetCat) muTargetCat.value = "";
+    criteriaPanel.style.display = "block";
+    previewPanel.style.display  = "none";
+    massUpdateModal.style.display = "block";
+    muDesc?.focus();
+  }
+
+  function closeMassUpdateModal() {
+    massUpdateModal.style.display = "none";
+  }
+
+  function getMatchingTransactions() {
+    const descVal    = muDesc?.value.trim().toLowerCase() ?? "";
+    const curCatVal  = muCurrentCat?.value ?? "";
+    const acctVal    = muAccount?.value ?? "";
+    const typeVal    = muType?.value ?? "";
+    const fromVal    = muDateFrom?.value ? new Date(muDateFrom.value) : null;
+    const toVal      = muDateTo?.value ? new Date(muDateTo.value + "T23:59:59") : null;
+
+    return allTxns.filter(t => {
+      if (descVal && !(t.payee ?? "").toLowerCase().includes(descVal)) return false;
+      if (curCatVal && t.categoryId !== curCatVal) return false;
+      if (acctVal && t.accountId !== acctVal) return false;
+      if (typeVal && t.type !== typeVal) return false;
+      const d = getDateValue(t.date);
+      if (fromVal && d && d < fromVal) return false;
+      if (toVal   && d && d > toVal)   return false;
+      return true;
+    });
+  }
+
+  massUpdateBtn?.addEventListener("click", openMassUpdateModal);
+  massUpdateClose?.addEventListener("click", closeMassUpdateModal);
+  massUpdateCancel?.addEventListener("click", closeMassUpdateModal);
+
+  // Close on backdrop click
+  massUpdateModal?.addEventListener("click", e => {
+    if (e.target === massUpdateModal) closeMassUpdateModal();
+  });
+
+  // Preview step
+  massUpdatePreview?.addEventListener("click", () => {
+    const targetCatId = muTargetCat?.value ?? "";
+    if (!targetCatId) {
+      muTargetCat?.focus();
+      muTargetCat?.style && (muTargetCat.style.borderColor = "var(--color-notification,#a13544)");
+      setTimeout(() => muTargetCat && (muTargetCat.style.borderColor = ""), 1500);
+      return;
+    }
+
+    const matches = getMatchingTransactions();
+    const targetCat = catMap[targetCatId];
+    const targetLabel = targetCat ? (targetCat.emoji ? `${targetCat.emoji} ${targetCat.name}` : targetCat.name) : targetCatId;
+
+    previewSummary.textContent = matches.length === 0
+      ? "No transactions match your criteria."
+      : `${matches.length} transaction${matches.length === 1 ? "" : "s"} will be updated \u2192 ${targetLabel}`;
+
+    if (matches.length === 0) {
+      previewList.innerHTML = `<div style="padding:1rem;color:var(--muted);text-align:center;">No matches found.</div>`;
+      massUpdateApply.style.display = "none";
+    } else {
+      massUpdateApply.style.display = "";
+      massUpdateApply.textContent = `Apply to ${matches.length} transaction${matches.length === 1 ? "" : "s"}`;
+
+      const rows = matches.slice(0, 100).map(t => {
+        const acctName = accountMap[t.accountId] ?? "";
+        const oldCat   = catMap[t.categoryId];
+        const oldLabel = oldCat ? (oldCat.emoji ? `${oldCat.emoji} ${oldCat.name}` : oldCat.name) : "(none)";
+        const isIncome = t.type === "income";
+        return `<div style="display:grid;grid-template-columns:80px 1fr auto;gap:0.5rem;align-items:center;
+                            padding:0.4rem 0.75rem;border-bottom:1px solid var(--border);">
+          <span style="color:var(--muted);font-size:0.72rem;white-space:nowrap;">${escHtml(formatDate(t.date))}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(t.payee ?? "")}">
+            ${escHtml(t.payee ?? "")}
+            <span style="color:var(--muted);font-size:0.7rem;"> &mdash; ${escHtml(acctName)}</span>
+          </span>
+          <span style="font-size:0.72rem;color:var(--muted);white-space:nowrap;">${escHtml(oldLabel)}</span>
+        </div>`;
+      }).join("");
+
+      const overflow = matches.length > 100
+        ? `<div style="padding:0.5rem 0.75rem;color:var(--muted);font-size:0.75rem;">&#8230; and ${matches.length - 100} more</div>`
+        : "";
+      previewList.innerHTML = rows + overflow;
+    }
+
+    criteriaPanel.style.display = "none";
+    previewPanel.style.display  = "block";
+  });
+
+  // Back to criteria
+  massUpdateBack?.addEventListener("click", () => {
+    criteriaPanel.style.display = "block";
+    previewPanel.style.display  = "none";
+  });
+
+  // Apply batch update
+  massUpdateApply?.addEventListener("click", async () => {
+    const targetCatId = muTargetCat?.value ?? "";
+    if (!targetCatId) return;
+
+    const matches = getMatchingTransactions();
+    if (matches.length === 0) return;
+
+    massUpdateApply.disabled = true;
+    massUpdateApply.textContent = "Updating\u2026";
+
+    try {
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < matches.length; i += BATCH_SIZE) {
+        const batch = writeBatch(getDb());
+        matches.slice(i, i + BATCH_SIZE).forEach(t => {
+          batch.update(doc(getDb(), "transactions", t.id), { categoryId: targetCatId, updatedAt: new Date() });
+        });
+        await batch.commit();
+      }
+
+      // Update local cache
+      const idSet = new Set(matches.map(t => t.id));
+      allTxns.forEach(t => { if (idSet.has(t.id)) t.categoryId = targetCatId; });
+
+      closeMassUpdateModal();
+      renderTable();
+    } catch (err) {
+      console.error("[transactions] mass update error:", err);
+      alert("Mass update failed. Please try again.");
+      massUpdateApply.disabled = false;
+      massUpdateApply.textContent = `Apply to ${matches.length} transaction${matches.length === 1 ? "" : "s"}`;
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────
    _refreshTransactionsPage = loadTransactions;
    await loadTransactions();
 
