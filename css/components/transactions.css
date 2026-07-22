@@ -345,12 +345,103 @@ html[data-theme="dark"] .txn-type-badge--expense { background: color-mix(in srgb
   font-size: 0.85rem;
 }
 
-/* ── Modal backdrop: fixed overlay covering the full viewport ── */
-/* This ensures modals are not clipped by the section's overflow:hidden */
+/* ══════════════════════════════════════════════════════════════════════
+   Transaction Modals
+   Outside <section> so not clipped by overflow:hidden.
+   JS toggles display:none / display:flex directly.
+   ══════════════════════════════════════════════════════════════════════ */
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1000;
+  background: color-mix(in srgb, var(--text, #1a1a1a) 50%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4, 1rem);
+}
+
+.modal-box {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 12px);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--text) 20%, transparent);
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Modal header ── */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem) var(--space-3, 0.75rem);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.modal-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1rem;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  flex-shrink: 0;
+}
+
+.modal-close-btn:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+
+/* ── Modal body (scrollable) ── */
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Modal footer ── */
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem) var(--space-5, 1.25rem) var(--space-4, 1rem);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Mobile: sheet-style from bottom ── */
+@media (max-width: 480px) {
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-box {
+    max-height: 92vh;
+    border-radius: var(--radius-sm, 12px) var(--radius-sm, 12px) 0 0;
+  }
 }
 
 /* Responsive */
