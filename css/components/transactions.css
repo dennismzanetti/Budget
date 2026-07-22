@@ -368,6 +368,8 @@ html[data-theme="dark"] .txn-type-badge--expense { background: color-mix(in srgb
   border-radius: var(--radius-sm, 12px);
   box-shadow: 0 20px 60px color-mix(in srgb, var(--text) 20%, transparent);
   width: 100%;
+  max-width: 520px;
+  margin-inline: auto;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
