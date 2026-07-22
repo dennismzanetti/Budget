@@ -108,139 +108,141 @@
     </div>
   </div>
 
-  <!-- ── Add Transaction Modal ─────────────────────────────────────── -->
-  <div id="addTransactionModal" class="modal-backdrop" style="display:none;" role="dialog"
-       aria-modal="true" aria-labelledby="addTxnModalTitle">
-    <div class="modal-box" style="max-width:480px;width:100%;">
-      <div class="modal-header">
-        <h3 id="addTxnModalTitle" class="modal-title">Add Transaction</h3>
-        <button id="addTxnClose" class="modal-close-btn" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="addTxnForm" novalidate autocomplete="off">
-
-          <div class="form-group">
-            <label for="addTxnDate" class="form-label">Date <span aria-hidden="true">*</span></label>
-            <input id="addTxnDate" type="date" class="form-input" required />
-          </div>
-
-          <div class="form-group">
-            <label for="addTxnPayee" class="form-label">Description / Payee <span aria-hidden="true">*</span></label>
-            <input id="addTxnPayee" type="text" class="form-input" placeholder="e.g. Grocery Store" required />
-          </div>
-
-          <div class="form-group">
-            <label for="addTxnAccount" class="form-label">Account <span aria-hidden="true">*</span></label>
-            <select id="addTxnAccount" class="form-input" required>
-              <option value="">&#8212; select account &#8212;</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="addTxnCategory" class="form-label">Category</label>
-            <select id="addTxnCategory" class="form-input">
-              <option value="">&#8212; none &#8212;</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="addTxnType" class="form-label">Type <span aria-hidden="true">*</span></label>
-            <select id="addTxnType" class="form-input" required>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="addTxnAmount" class="form-label">Amount ($) <span aria-hidden="true">*</span></label>
-            <input id="addTxnAmount" type="number" class="form-input" placeholder="0.00"
-                   min="0.01" step="0.01" required />
-          </div>
-
-          <div class="form-group">
-            <label for="addTxnNotes" class="form-label">Notes</label>
-            <input id="addTxnNotes" type="text" class="form-input" placeholder="Optional notes" />
-          </div>
-
-          <div id="addTxnError" style="display:none;color:var(--color-error,#a12c7b);
-               background:var(--color-error-highlight,#e0ced7);border-radius:var(--radius-md,6px);
-               padding:0.5rem 0.75rem;margin-bottom:0.75rem;font-size:0.875rem;">
-          </div>
-
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button id="addTxnCancel" class="btn btn-secondary">Cancel</button>
-        <button id="addTxnSave" class="btn btn-primary">Save Transaction</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Mass Update Modal ─────────────────────────────────────────── -->
-  <div id="massUpdateModal" class="modal-backdrop" style="display:none;" role="dialog"
-       aria-modal="true" aria-labelledby="massUpdateModalTitle">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 id="massUpdateModalTitle" class="modal-title">Mass Category Update</h3>
-        <button id="massUpdateClose" class="modal-close-btn" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <!-- Criteria panel -->
-        <div id="massUpdateCriteriaPanel">
-          <p style="margin-bottom:1rem;color:var(--color-text-muted,#7a7974);font-size:0.875rem;">Match transactions by any combination of criteria, then bulk-assign a category.</p>
-          <div class="form-group">
-            <label class="form-label" for="muDesc">Description contains</label>
-            <input id="muDesc" type="text" class="form-input" placeholder="e.g. Amazon" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="muCurrentCat">Current category</label>
-            <select id="muCurrentCat" class="form-input"></select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="muAccount">Account</label>
-            <select id="muAccount" class="form-input"></select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="muType">Type</label>
-            <select id="muType" class="form-input">
-              <option value="">Any type</option>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-            <div class="form-group">
-              <label class="form-label" for="muDateFrom">From date</label>
-              <input id="muDateFrom" type="date" class="form-input" />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="muDateTo">To date</label>
-              <input id="muDateTo" type="date" class="form-input" />
-            </div>
-          </div>
-          <hr style="margin:1rem 0;border:none;border-top:1px solid var(--color-divider,#dcd9d5);" />
-          <div class="form-group">
-            <label class="form-label" for="muTargetCat">Assign category <span aria-hidden="true">*</span></label>
-            <select id="muTargetCat" class="form-input"></select>
-          </div>
-        </div>
-
-        <!-- Preview panel (shown after clicking Preview) -->
-        <div id="massUpdatePreviewPanel" style="display:none;">
-          <p id="massUpdatePreviewSummary" style="margin-bottom:0.75rem;font-weight:600;"></p>
-          <div id="massUpdatePreviewList"
-               style="max-height:320px;overflow-y:auto;border:1px solid var(--color-border,#d4d1ca);
-                      border-radius:var(--radius-md,6px);font-size:0.8rem;">
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="massUpdateCancel" class="btn btn-secondary">Cancel</button>
-        <button id="massUpdateBack" class="btn btn-secondary" style="display:none;">&#8592; Back</button>
-        <button id="massUpdatePreview" class="btn btn-primary">Preview matches</button>
-        <button id="massUpdateApply" class="btn btn-primary" style="display:none;">Apply</button>
-      </div>
-    </div>
-  </div>
-
 </section>
+
+<!-- ── Add Transaction Modal ─────────────────────────────────────────── -->
+<!-- Placed outside <section> so it is not clipped by overflow:hidden      -->
+<div id="addTransactionModal" class="modal-backdrop" style="display:none;" role="dialog"
+     aria-modal="true" aria-labelledby="addTxnModalTitle">
+  <div class="modal-box" style="max-width:480px;width:100%;">
+    <div class="modal-header">
+      <h3 id="addTxnModalTitle" class="modal-title">Add Transaction</h3>
+      <button id="addTxnClose" class="modal-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="addTxnForm" novalidate autocomplete="off">
+
+        <div class="form-group">
+          <label for="addTxnDate" class="form-label">Date <span aria-hidden="true">*</span></label>
+          <input id="addTxnDate" type="date" class="form-input" required />
+        </div>
+
+        <div class="form-group">
+          <label for="addTxnPayee" class="form-label">Description / Payee <span aria-hidden="true">*</span></label>
+          <input id="addTxnPayee" type="text" class="form-input" placeholder="e.g. Grocery Store" required />
+        </div>
+
+        <div class="form-group">
+          <label for="addTxnAccount" class="form-label">Account <span aria-hidden="true">*</span></label>
+          <select id="addTxnAccount" class="form-input" required>
+            <option value="">&#8212; select account &#8212;</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="addTxnCategory" class="form-label">Category</label>
+          <select id="addTxnCategory" class="form-input">
+            <option value="">&#8212; none &#8212;</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="addTxnType" class="form-label">Type <span aria-hidden="true">*</span></label>
+          <select id="addTxnType" class="form-input" required>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="addTxnAmount" class="form-label">Amount ($) <span aria-hidden="true">*</span></label>
+          <input id="addTxnAmount" type="number" class="form-input" placeholder="0.00"
+                 min="0.01" step="0.01" required />
+        </div>
+
+        <div class="form-group">
+          <label for="addTxnNotes" class="form-label">Notes</label>
+          <input id="addTxnNotes" type="text" class="form-input" placeholder="Optional notes" />
+        </div>
+
+        <div id="addTxnError" style="display:none;color:var(--color-error,#a12c7b);
+             background:var(--color-error-highlight,#e0ced7);border-radius:var(--radius-md,6px);
+             padding:0.5rem 0.75rem;margin-bottom:0.75rem;font-size:0.875rem;">
+        </div>
+
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button id="addTxnCancel" class="btn btn-secondary">Cancel</button>
+      <button id="addTxnSave" class="btn btn-primary">Save Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Mass Update Modal ──────────────────────────────────────────────── -->
+<!-- Placed outside <section> so it is not clipped by overflow:hidden      -->
+<div id="massUpdateModal" class="modal-backdrop" style="display:none;" role="dialog"
+     aria-modal="true" aria-labelledby="massUpdateModalTitle">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="massUpdateModalTitle" class="modal-title">Mass Category Update</h3>
+      <button id="massUpdateClose" class="modal-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Criteria panel -->
+      <div id="massUpdateCriteriaPanel">
+        <p style="margin-bottom:1rem;color:var(--color-text-muted,#7a7974);font-size:0.875rem;">Match transactions by any combination of criteria, then bulk-assign a category.</p>
+        <div class="form-group">
+          <label class="form-label" for="muDesc">Description contains</label>
+          <input id="muDesc" type="text" class="form-input" placeholder="e.g. Amazon" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="muCurrentCat">Current category</label>
+          <select id="muCurrentCat" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="muAccount">Account</label>
+          <select id="muAccount" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="muType">Type</label>
+          <select id="muType" class="form-input">
+            <option value="">Any type</option>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="muDateFrom">From date</label>
+            <input id="muDateFrom" type="date" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="muDateTo">To date</label>
+            <input id="muDateTo" type="date" class="form-input" />
+          </div>
+        </div>
+        <hr style="margin:1rem 0;border:none;border-top:1px solid var(--color-divider,#dcd9d5);" />
+        <div class="form-group">
+          <label class="form-label" for="muTargetCat">Assign category <span aria-hidden="true">*</span></label>
+          <select id="muTargetCat" class="form-input"></select>
+        </div>
+      </div>
+
+      <!-- Preview panel (shown after clicking Preview) -->
+      <div id="massUpdatePreviewPanel" style="display:none;">
+        <p id="massUpdatePreviewSummary" style="margin-bottom:0.75rem;font-weight:600;"></p>
+        <div id="massUpdatePreviewList"
+             style="max-height:320px;overflow-y:auto;border:1px solid var(--color-border,#d4d1ca);
+                    border-radius:var(--radius-md,6px);font-size:0.8rem;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="massUpdateCancel" class="btn btn-secondary">Cancel</button>
+      <button id="massUpdateBack" class="btn btn-secondary" style="display:none;">&#8592; Back</button>
+      <button id="massUpdatePreview" class="btn btn-primary">Preview matches</button>
+      <button id="massUpdateApply" class="btn btn-primary" style="display:none;">Apply</button>
+    </div>
+  </div>
+</div>

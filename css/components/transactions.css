@@ -345,6 +345,14 @@ html[data-theme="dark"] .txn-type-badge--expense { background: color-mix(in srgb
   font-size: 0.85rem;
 }
 
+/* ── Modal backdrop: fixed overlay covering the full viewport ── */
+/* This ensures modals are not clipped by the section's overflow:hidden */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .txn-hide-mobile { display: none; }
